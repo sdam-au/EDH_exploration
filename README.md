@@ -1,20 +1,23 @@
-# Meaningful title for the repository
-*pick type of repository (TOOL, ETL, ANALYSIS, ADMIN)*
+# Quantitative analysis of epigraphic texts from the Epigraphic Database Heidelberg (EDH)
+*ANALYSIS*
+
+[![License: CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/80x15.png "Creative Commons License CC BY-NC-SA 4.0")](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+![Project_status](https://img.shields.io/badge/status-in__progress-brightgreen "Project status logo")
 
 ---
 
 ## Purpose
-[In two to three sentences state the purpose of this repository, ideally tying it to an existing SDAM milestone. E.g., The purpose of this repository is to provide templates for all future SDAM repositories in order to save precious time and maintain high standards and uniformity of our documentation.]
+This repository contains scripts for qunatitative analysis of epigraphic texts from the [Epigraphic Database Heidelberg](https://edh-www.adw.uni-heidelberg.de/data/api).
+
+The main EDH dataset was produced by a series of [ETL scripts](https://github.com/sdam-au/EDH_ETL/scripts) accessible and fully reproducible via Github.
 
 ---
 ## Authors
 * Petra Hermankova [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0002-6349-0540), SDAM project, petra@ancientsocialcomplexity.org
-* [Name], [ORCID], [Institution], [email]
-* [Name], [ORCID], [Institution], [email]
-* [Name], [ORCID], [Institution], [email]
+* Vojtěch Kaše [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)]([0000-0002-6601-1605](https://www.google.com/url?q=http://orcid.org/0000-0002-6601-1605&sa=D&ust=1588773325679000)) SDAM project, vojtech.kase@gmail.com
 
 ## License
-CC-BY-SA 4.0, see attached License.md
+[CC-BY-SA 4.0](https://github.com/sdam-au/EDH_ETL/blob/master/LICENSE.md)
 
 ## DOI
 [Here will be DOI or some other identifier once we have it]
