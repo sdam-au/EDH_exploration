@@ -9,7 +9,7 @@
 ## Purpose
 This repository contains scripts for qunatitative analysis of epigraphic texts from the [Epigraphic Database Heidelberg](https://edh-www.adw.uni-heidelberg.de/data/api).
 
-The main EDH dataset was produced by a series of [ETL scripts](https://github.com/sdam-au/EDH_ETL/scripts) accessible and fully reproducible via Github.
+The main EDH dataset was produced by a series of [ETL scripts](https://github.com/sdam-au/EDH_ETL/tree/master/scripts) accessible and fully reproducible via Github.
 
 ---
 ## Authors
