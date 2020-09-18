@@ -671,6 +671,29 @@ EDH_clean <- EDH_clean %>%
   mutate(clean_text_interpretive_sentence = cleaning_interpretive_sentence_edh(EDH_clean$transcription))
 ```
 
+# Saving to Sciencedata
+```{r}
+EDH_cleaned_json <- jsonlite::toJSON(EDH_clean)
+
+write(EDH_cleaned_json, file="EDH_text_cleaned_2020-09-18.json")
+request("EDH_text_cleaned_2020-09-18.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/",
+        method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
+```
+
+# Remove local copy of the json and the credential before submitting to GitHub
+```{r}
+file.remove("./EDH_text_cleaned_2020-09-18.json")
+remove(mycred_secret)
+```
+---
+
+
+
+
+
+
+
+
 
 # Comparing the text extracted from XML files with the from the API that has been cleaned with the cleaning functions
 
@@ -781,20 +804,4 @@ texts$clean_text_interpretive_word %>% str_subset(pattern = "\\.") %>% unique() 
 
 
 
-# Saving to Sciencedata
-```{r}
-EDH_clean_tibble <- as_tibble(EDH_clean)
-EDH_cleaned_json <- jsonlite::toJSON(EDH_clean)
 
-write(EDH_cleaned_json, file="EDH_text_cleaned_2020-09-18.json")
-user <- readline("your sciencedata username: ")
-request("EDH_text_cleaned_2020-09-18.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/",
-        method="PUT", cred=c(user, getPass("your sciencedata password: ")))
-```
-
-# Remove local copy of the json and the credential before submitting to GitHub
-```{r}
-file.remove("./EDH_cleaned.json")
-remove(mycred_secret)
-#file.remove("EDH_cleaned_sample.json")
-```
