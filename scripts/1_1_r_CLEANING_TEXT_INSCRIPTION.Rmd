@@ -1,39 +1,44 @@
 ---
-title: "Cleaning of the text of inscriptions"
+title: "Cleaning of the text of EDH inscriptions"
 author: "Petra Hermankova"
 date: "17/09/2020"
-output: html_document
+output:
+  html_document:
+    theme: cerulean
+    toc: yes
+    toc_depth: 3
 ---
+
 
 ```{r setup, echo=TRUE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE, error=TRUE)
-devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
-library(tidyverse)
+devtools::install_github("sdam-au/sdam")
+
 library(sdam)
 library(jsonlite)
-library(getPass)
-library(formatR)
+library(tibble)
+library(tidyverse)
+library(rjson)
 ```
+# Loading data
 
-### Loading data
-
-1. Input your sciencedata.dk username - type directly into the RStudio console
-```{r, echo = FALSE }
-user <- readline("your sciencedata username: ")
-```
-
-2. Make the request (you will be asked for password in a new pop-up window)
-
-```{r, echo = FALSE }
-resp = request("EDH_merged_2020-09-17.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/", method="GET", cred=c(user, getPass("your sciencedata password: ")))
-```
-
-
-3. Make a list from the request and display the first six records (head)
+## 1. Load the credentials from external txt file
 ```{r}
-list_json <- jsonlite::fromJSON(resp)
-EDH_tibble = as_tibble(list_json)
-#View(EDH_tibble)
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+## 2. Make the request and download the dataset from Sciencedata
+```{r, echo = TRUE }
+resp = request("EDH_attrs_cleaned_2020-09-17.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/", method="GET", cred=c(mycred_secret[1], mycred_secret[2]))
+
+# remove any traces of the secret password from the document
+#remove(mycred_secret)
+```
+
+## 3. Make a list from the request and display the first six records (head)
+```{r}
+EDH_clean <- tibble::as_tibble(jsonlite::fromJSON(resp))
+head(EDH_clean)
 ```
 
 # Cleaning epigraphic text for tidy text mining analysis (word and sentence centered)
@@ -589,10 +594,10 @@ cleaning_interpretive_word_edh <- function(epigraphic_dataset){
 print(EDH_clean$transcription[1:5])
 ```
 
-`Text_cleaned` column, provided by EDH as a clean version of the text, for comparison with the output of the ```cleaning_intepretive_word_edh``` function:
+`Text_edition` column, extracted from the EDH XML files as a clean version of the text, for comparison with the output of the ```cleaning_intepretive_word_edh``` function:
 
 ```{r}
-print(EDH_clean$text_cleaned[1:5])
+print(EDH_clean$text_edition[1:5])
 ```
 
 Output of the ```cleaning_interpretive_word_edh``` function:
@@ -648,7 +653,7 @@ print(EDH_clean$transcription[c(2297, 2444, 3026)])
 `Text_cleaned` column, provided by EDH as a clean version of the text:
 
 ```{r}
-print(EDH_clean$text_cleaned[c(2297, 2444, 3026)])
+print(EDH_clean$text_edition[c(2297, 2444, 3026)])
 ```
 
 Output of the ```cleaning_interpretive_sentence_edh``` function (with interpunction):
@@ -705,8 +710,16 @@ length(unique(unlist(texts$text_edition))) - length(unique(texts$clean_text_inte
 ```{r}
 texts %>% 
   select(text_edition, clean_text_interpretive_word, transcription) %>% 
-  filter(clean_text_interpretive_word == "NULL") %>% 
-  View()
+   unnest_wider(col=text_edition) %>% 
+   unnest_wider(col=transcription) %>% 
+   filter(clean_text_interpretive_word == "NULL") %>% 
+   View()
+
+
+
+
+
+
 ```
 ## What is the contents of text-edition when clean_text_interpretive_word inscriptions contains NULL
 ```{r}
@@ -773,14 +786,15 @@ texts$clean_text_interpretive_word %>% str_subset(pattern = "\\.") %>% unique() 
 EDH_clean_tibble <- as_tibble(EDH_clean)
 EDH_cleaned_json <- jsonlite::toJSON(EDH_clean)
 
-write(EDH_cleaned_json, file="EDH_cleaned_2020-09-17.json")
+write(EDH_cleaned_json, file="EDH_text_cleaned_2020-09-18.json")
 user <- readline("your sciencedata username: ")
-request("EDH_cleaned_2020-09-16.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/",
+request("EDH_text_cleaned_2020-09-18.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/",
         method="PUT", cred=c(user, getPass("your sciencedata password: ")))
 ```
 
-# Remove local copy of the json
+# Remove local copy of the json and the credential before submitting to GitHub
 ```{r}
 file.remove("./EDH_cleaned.json")
+remove(mycred_secret)
 #file.remove("EDH_cleaned_sample.json")
 ```
