@@ -685,6 +685,7 @@ request("EDH_text_cleaned_2020-09-18.json", path="/sharingout/648597@au.dk/SDAM_
 file.remove("./EDH_text_cleaned_2020-09-18.json")
 remove(mycred_secret)
 ```
+
 ---
 
 
@@ -704,13 +705,13 @@ texts <- EDH_clean %>%
 
 # Comparing qualitatively individual outputs next to each other
 ```{r}
-textno <- 1
+textno <- 14
 
-texts$text_edition[textno]
+texts$text_edition[textno][1]
 texts$clean_text_conservative[textno]
 texts$clean_text_interpretive_word[textno]
 texts$clean_text_interpretive_sentence[textno]
-texts$transcription[textno]
+texts$transcription[textno][1]
 ```
 
 # comparing the total number of texts
@@ -731,17 +732,13 @@ length(unique(unlist(texts$text_edition))) - length(unique(texts$clean_text_inte
 
 ## What is the contents of clean_text_interpretive_word when text-edition inscriptions contains NULL
 ```{r}
-texts %>% 
-  select(text_edition, clean_text_interpretive_word, transcription) %>% 
+
+# do not run
+ texts %>% 
+   select(text_edition, clean_text_interpretive_word, transcription) %>% 
    unnest_wider(col=text_edition) %>% 
    unnest_wider(col=transcription) %>% 
-   filter(clean_text_interpretive_word == "NULL") %>% 
-   View()
-
-
-
-
-
+   filter(clean_text_interpretive_word == "NULL") 
 
 ```
 ## What is the contents of text-edition when clean_text_interpretive_word inscriptions contains NULL
