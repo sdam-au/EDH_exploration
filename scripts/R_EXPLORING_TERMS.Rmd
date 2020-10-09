@@ -1,0 +1,62 @@
+---
+title: "Exploration of specific terms in EDH"
+author: "Petra Hermankova"
+date: "09/10/2020"
+output: html_document
+---
+
+```{r setup, echo=TRUE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error=TRUE)
+devtools::install_github("sdam-au/sdam")
+
+library(sdam)
+library(jsonlite)
+library(tibble)
+library(tidyverse)
+library(rjson)
+```
+## Loading data
+1. Load the dataset, if you have Sciencedata.dk credentials
+
+```{r, echo=FALSE}
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+```{r, loading data}
+resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+```
+
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+2. Make a list and tibble from the request function
+```{r}
+list_json <- jsonlite::fromJSON(resp)
+EDH_tibble <- as_tibble(list_json)
+```
+
+# Search in the cleaned text for Asclepius
+```{r}
+asclepius <- c("[A|a]s[c|k]lep.+", "[A|a|e|E]es[c|k]ul.+")
+
+EDH_tibble %>% 
+  dplyr::filter(str_detect(string= clean_text_interpretive_word, pattern=asclepius))
+
+EDH_tibble %>% 
+  filter(str_detect(string= commentary, pattern=asclepius))
+
+```
+
+```{r}
+apollo <- c("[A|a]po[l|ll]")
+EDH_tibble %>% 
+  filter(str_detect(string = clean_text_interpretive_word, pattern=apollo))
+```
+
+```{r}
+EDH_tibble %>% 
+  count(responsible_individual, sort = TRUE)
+```
+
+
