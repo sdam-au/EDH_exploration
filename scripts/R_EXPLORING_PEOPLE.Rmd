@@ -1,0 +1,113 @@
+---
+title: "Exploration of "people" in EDH"
+author: "Petra Hermankova"
+date: "08/10/2020"
+output: html_document
+---
+
+# Initial setup
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE}
+devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+library(tidyverse)
+library(sdam)
+library(jsonlite)
+library(getPass)
+library(formatR)
+library(leaflet)
+```
+
+## Loading data
+1. Load the dataset, if you have Sciencedata.dk credentials
+
+```{r, echo=FALSE}
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+```{r, loading data}
+resp = request("EDH_attrs_cleaned_2020-09-30.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+```
+
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+3. Make a list and tibble from the request function
+```{r}
+list_json <- jsonlite::fromJSON(resp)
+EDH_tibble <- as_tibble(list_json)
+```
+
+Display the first 6 records
+```{r}
+head(EDH_tibble)
+```
+
+
+# People
+```{r}
+EDH_tibble$people[10:15]
+```
+
+
+## How many people are in total in the EDH database?
+```{r}
+EDH_tibble$people -> people
+
+# number of inscriptions containing people
+length(people) - sum(people == "NULL")
+
+sum(people != "NULL")
+
+```
+```{r}
+people[100]
+
+sum(people == "NULL")
+```
+
+## Gender
+```{r}
+# SEARCHING FOR ONE TERM:
+
+#what is the gender ratio
+
+female<- sum(str_count(people, "female"))
+female
+male<- sum(str_count(people, "male"))
+male
+
+```
+
+## Status
+```{r}
+# how many different status keywords
+freedmen<- sum(str_count(people, "freedmen"))
+slave<- sum(str_count(people, "slave"))
+senator<- sum(str_count(people, "senator"))
+emperor<- sum(str_count(people, "emperor"))
+```
+
+
+
+# People on funerary inscriptions
+```{r}
+epitaphs<- EDH_tibble %>% 
+  filter(type_of_inscription_clean == "epitaph")
+
+epitaph_female<- sum(str_count(epitaphs$people, "female"))
+epitaph_male<- sum(str_count(epitaphs$people, "male"))
+
+# how many total people there are
+
+epitaph_total_people<- length(epitaphs$people)
+
+
+# what is the ratio of male, female, unspecified
+epitaph_female/epitaph_total_people
+epitaph_male/epitaph_total_people
+```
+
