@@ -1,8 +1,15 @@
 ---
-title: "Exploration of "people" in EDH"
+title: "Exploration of the 'people' attribute in EDH dataset"
 author: "Petra Hermankova"
-date: "08/10/2020"
-output: html_document
+date: "22/10/2020"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    toc_depth: 2
+    df_print: paged
 ---
 
 # Initial setup
@@ -35,79 +42,221 @@ resp = request("EDH_attrs_cleaned_2020-09-30.json", path="/sharingin/648597@au.d
 remove(mycred_secret)
 ```
 
-3. Make a list and tibble from the request function
+2. Make a list and tibble from the request function
 ```{r}
 list_json <- jsonlite::fromJSON(resp)
 EDH_tibble <- as_tibble(list_json)
 ```
 
-Display the first 6 records
+3. Display the first 6 records
 ```{r}
 head(EDH_tibble)
 ```
 
 
-# People
+# Exploration of the attribute 'People' using tidyverse solution
+
+0. What are names of all attributes within the 'people' attribute
+1. How many people are in total in the EDH database?
+2. How many people there are per inscription (average, min, max)
+3. What is the gender ratio of people on inscriptions? (male, female, NA)
+4. What are the names of unique values in the 'status' attribute? 
+5. What is the ratio of different statuses, e.g. slave vs freedman
+6. How many inscriptions have ‘Age’ category?
+7. What is the average age of people (years, months, days)
+
+
+When I have the pointers how to get the data out of 'people' I will be looking at the following specific cases:
+
+Specific case (funerary inscriptions; attribue 'type_of_inscription_clean' == 'epitaph')
+1. How many people are on funerary inscriptions (total, average, min, max)
+2. What is the ratio of genders on funerary inscriptions (male, female, NA)
+3. What is the age of people on funerary inscriptions (total number of insc with age, average, min, max)
+4. What is the average age of people on funerary inscriptions by province
+
+Specific case (gender composition)
+1. Ratio of men/women on different types of inscriptions (attribue 'type_of_inscription_clean')
+
 ```{r}
-EDH_tibble$people[10:15]
+EDH_unnested<- EDH_tibble %>% 
+  unnest(people)
 ```
 
+## What are names of all attributes within the 'people' attribute
+```{r}
+setdiff(names(EDH_unnested), names(EDH_tibble))
+```
 
 ## How many people are in total in the EDH database?
+
+One way through gender
 ```{r}
-EDH_tibble$people -> people
-
-# number of inscriptions containing people
-length(people) - sum(people == "NULL")
-
-sum(people != "NULL")
-
-```
-```{r}
-people[100]
-
-sum(people == "NULL")
+EDH_unnested %>% 
+  count(gender, sort = TRUE) -> gender
+sum(gender$n)
 ```
 
-## Gender
+Second way through nrow
 ```{r}
-# SEARCHING FOR ONE TERM:
-
-#what is the gender ratio
-
-female<- sum(str_count(people, "female"))
-female
-male<- sum(str_count(people, "male"))
-male
-
-```
-
-## Status
-```{r}
-# how many different status keywords
-freedmen<- sum(str_count(people, "freedmen"))
-slave<- sum(str_count(people, "slave"))
-senator<- sum(str_count(people, "senator"))
-emperor<- sum(str_count(people, "emperor"))
+nrow(EDH_unnested)
 ```
 
 
-
-# People on funerary inscriptions
+## How many people there are per inscription (average, min, max)
 ```{r}
-epitaphs<- EDH_tibble %>% 
-  filter(type_of_inscription_clean == "epitaph")
+summary(as.numeric(EDH_unnested$person_id))
+```
 
-epitaph_female<- sum(str_count(epitaphs$people, "female"))
-epitaph_male<- sum(str_count(epitaphs$people, "male"))
+## What is the gender ratio of people on inscriptions? (male, female, NA)
+```{r}
+EDH_unnested %>% 
+  count(gender, sort = TRUE)
+```
 
-# how many total people there are
+## What are the names of unique values in the 'status' attribute?
+```{r}
+EDH_unnested$status %>% 
+  unique()
+```
 
-epitaph_total_people<- length(epitaphs$people)
+
+## What is the ratio of different statuses, e.g. slave vs freedman
+
+```{r}
+EDH_unnested %>% 
+  select(status) %>% 
+  count(status, sort = TRUE)
+```
 
 
-# what is the ratio of male, female, unspecified
-epitaph_female/epitaph_total_people
-epitaph_male/epitaph_total_people
+## How many inscriptions have ‘Age’ category?
+
+```{r}
+EDH_unnested %>% 
+  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  filter(!is.na(EDH_unnested$`age: years`) | !is.na(EDH_unnested$`age: months`) | !is.na(EDH_unnested$`age: days`) |!is.na(EDH_unnested$`age: hours`))
+```
+
+
+What are the unique values for years
+```{r}
+unique(EDH_unnested$`age: years`)
+```
+
+How many people have their age stated in years
+```{r}
+sum(!is.na(EDH_unnested$`age: years`))
+EDH_unnested %>% 
+  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  filter(!is.na(EDH_unnested$`age: years`))
+```
+
+How many people have their age stated in months
+```{r}
+sum(!is.na(EDH_unnested$`age: months`))
+EDH_unnested %>% 
+  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  filter(!is.na(EDH_unnested$`age: months`))
+```
+
+How many people have their age stated in days
+
+```{r}
+sum(!is.na(EDH_unnested$`age: days`))
+EDH_unnested %>% 
+  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  filter(!is.na(EDH_unnested$`age: days`))
+```
+
+How many people have their age stated in hours
+```{r}
+sum(!is.na(EDH_unnested$`age: hours`))
+EDH_unnested %>% 
+  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  filter(!is.na(EDH_unnested$`age: hours`))
+```
+
+
+## What is the average age of people (years, months, days)
+
+Not ideal method as it skips a lot of textual descriptions
+```{r}
+summary(as.numeric(EDH_unnested$`age: years`))
+summary(as.numeric(EDH_unnested$`age: months`))
+summary(as.numeric(EDH_unnested$`age: days`))
+summary(as.numeric(EDH_unnested$`age: hours`))
+```
+
+Better method using regular expressions to detect years and converting them as numeric
+```{r}
+EDH_unnested %>% 
+  select('age: days', 'age: months', 'age: hours', 'age: years') %>% 
+  mutate(age_years = as.numeric(str_extract(EDH_unnested$'age: years', pattern = "[:digit:]+"))) %>% 
+  mutate(age_months = as.numeric(str_extract(EDH_unnested$'age: months', pattern = "[:digit:]+"))) %>%
+  mutate(age_days = as.numeric(str_extract(EDH_unnested$'age: days', pattern = "[:digit:]+"))) %>%
+  mutate(age_hours = as.numeric(str_extract(EDH_unnested$'age: hours', pattern = "[:digit:]+"))) -> ages
+```
+
+```{r}
+summary(ages$age_years)
+summary(ages$age_months)
+summary(ages$age_days)
+summary(ages$age_hours)
+```
+
+# More complex questions
+
+## What is the age of people on funerary inscriptions by province
+```{r}
+EDH_unnested %>% 
+  filter(type_of_inscription_clean == "epitaph") -> epitaph
+```
+
+```{r, fig.height=8}
+epitaph %>% 
+  select(`age: years`, province_label_clean) %>% 
+  mutate(age_years = as.numeric(str_extract(epitaph$'age: years', pattern = "[:digit:]+"))) %>% 
+  count(age_years, province_label_clean) %>% 
+  ggplot(aes(x=age_years, y= province_label_clean)) + geom_point(alpha=0.5, color="darkblue") +
+  theme_minimal()
+dir.create("../figures")
+ggsave("../figures/Age_years_provinces.png", width = 8, height = 8) 
+```
+
+
+## What is the average age of people on funerary inscriptions by province
+
+
+```{r}
+epitaph %>% 
+  select(`age: years`, province_label_clean) %>% 
+  mutate(age_years = as.numeric(str_extract(epitaph$'age: years', pattern = "[:digit:]+"))) -> epitaph 
+
+# frequency of with which people state the age in years by provinces
+epitaph %>% 
+  na.omit(age_years) %>% 
+  count(province_label_clean, sort = TRUE) 
+
+```
+
+```{r}
+# install.packages("psych")
+library(psych)
+
+describeBy(epitaph$age_years, group = epitaph$province_label_clean, mat = TRUE, digits = 2) -> age_provinces
+head(age_provinces)
+```
+
+```{r, fig.height=8}
+age_provinces %>% 
+  select(group1, mean) %>% 
+  ggplot(aes(y=group1, x=mean)) +
+  geom_col(color="white", fill="blue", width=1, stat="identity") +
+  coord_cartesian(xlim=c(0,80)) +
+  theme_minimal() +
+  labs(y="Roman province", x="Years", title= "Average age of people on inscriptions in the EDH database", subtitle = "n= 7993 people" ) +
+  
+ggsave("../figures/Age_average_years_provinces.png", width = 8, height = 8) 
+
 ```
 

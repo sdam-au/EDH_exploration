@@ -20,26 +20,27 @@ library(tibble)
 library(tidyverse)
 library(rjson)
 ```
-# Loading data
+## Loading data
+1. Load the dataset, if you have Sciencedata.dk credentials
 
-## 1. Load the credentials from external txt file
-```{r}
+```{r, echo=FALSE}
 mycred_secret<- readLines("~/mysecret.txt")
 ```
 
-## 2. Make the request and download the dataset from Sciencedata
-```{r, echo = TRUE }
-resp = request("EDH_attrs_cleaned_2020-09-17.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/", method="GET", cred=c(mycred_secret[1], mycred_secret[2]))
-
-# remove any traces of the secret password from the document
-#remove(mycred_secret)
+```{r, loading data}
+resp = request("EDH_attrs_cleaned_2020-09-30.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
 ```
 
-## 3. Make a list from the request and display the first six records (head)
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+2. Make a list and tibble from the request function
 ```{r}
-EDH_clean <- tibble::as_tibble(jsonlite::fromJSON(resp))
-head(EDH_clean)
+list_json <- jsonlite::fromJSON(resp)
+EDH_clean <- as_tibble(list_json)
 ```
+
 
 # Cleaning epigraphic text for tidy text mining analysis (word and sentence centered)
 
@@ -675,28 +676,21 @@ EDH_clean <- EDH_clean %>%
 ```{r}
 EDH_cleaned_json <- jsonlite::toJSON(EDH_clean)
 
-write(EDH_cleaned_json, file="EDH_text_cleaned_2020-09-18.json")
-request("EDH_text_cleaned_2020-09-18.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/",
+write(EDH_cleaned_json, file="EDH_text_cleaned_2020-10-09.json")
+request("EDH_text_cleaned_2020-10-09.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public",
         method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
 ```
 
 # Remove local copy of the json and the credential before submitting to GitHub
 ```{r}
-file.remove("./EDH_text_cleaned_2020-09-18.json")
+file.remove("./EDH_text_cleaned_2020-10-09.json")
 remove(mycred_secret)
 ```
 
 ---
 
 
-
-
-
-
-
-
-
-# Comparing the text extracted from XML files with the from the API that has been cleaned with the cleaning functions
+ Comparing the text extracted from XML files with the from the API that has been cleaned with the cleaning functions
 
 ```{r}
 texts <- EDH_clean %>%
@@ -730,17 +724,7 @@ length(unique(unlist(texts$transcription)))
 length(unique(unlist(texts$text_edition))) - length(unique(texts$clean_text_interpretive_word))
 ```
 
-## What is the contents of clean_text_interpretive_word when text-edition inscriptions contains NULL
-```{r}
 
-# do not run
- texts %>% 
-   select(text_edition, clean_text_interpretive_word, transcription) %>% 
-   unnest_wider(col=text_edition) %>% 
-   unnest_wider(col=transcription) %>% 
-   filter(clean_text_interpretive_word == "NULL") 
-
-```
 ## What is the contents of text-edition when clean_text_interpretive_word inscriptions contains NULL
 ```{r}
 texts %>% 
