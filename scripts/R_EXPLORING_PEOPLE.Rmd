@@ -247,16 +247,17 @@ describeBy(epitaph$age_years, group = epitaph$province_label_clean, mat = TRUE, 
 head(age_provinces)
 ```
 
-```{r, fig.height=8}
+```{r}
 age_provinces %>% 
   select(group1, mean) %>% 
   ggplot(aes(y=group1, x=mean)) +
   geom_col(color="white", fill="blue", width=1, stat="identity") +
   coord_cartesian(xlim=c(0,80)) +
   theme_minimal() +
+  theme(text = element_text(size=15)) +
   labs(y="Roman province", x="Years", title= "Average age of people on inscriptions in the EDH database", subtitle = "n= 7993 people" ) +
   
-ggsave("../figures/Age_average_years_provinces.png", width = 8, height = 8) 
+ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
 
 ```
 

@@ -1,0 +1,264 @@
+---
+title: "Exploration of the epigraphic text using TidyText approach"
+author: "Petra Hermankova"
+date: "26/10/2020"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    toc_depth: 2
+    df_print: paged
+---
+
+# Initial setup
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE}
+devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+library(tidyverse)
+library(sdam)
+library(jsonlite)
+library(leaflet)
+library(tidytext)
+```
+
+## Loading data
+1. Load the dataset, if you have Sciencedata.dk credentials
+
+```{r, echo=FALSE}
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+```{r, loading data}
+resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+```
+
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+2. Make a list and tibble from the request function
+```{r}
+list_json <- jsonlite::fromJSON(resp)
+EDH_tibble <- as_tibble(list_json)
+```
+
+3. Display the first 6 records
+```{r}
+head(EDH_tibble)
+```
+
+
+# Tidy text analysis of the `clean_text_interpretive_word` column
+
+## Tokenizing words, splitting on an empty space
+```{r}
+EDH_tokenized <- EDH_tibble %>% 
+  unnest_tokens(word, clean_text_interpretive_word, token = stringr::str_split, pattern = " ") %>% 
+  drop_na(word) %>%
+  print()
+```
+
+## Counting the most common words 
+```{r, tidy=TRUE}
+EDH_tokenized %>% 
+  count(word, sort = TRUE) %>% 
+  filter(n > 5000) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  print()
+```
+
+## Number of total words on inscriptions per Roman province
+```{r}
+EDH_tokenized %>% 
+  count(province_label_clean, word, sort = TRUE) %>% 
+  group_by(province_label_clean) %>% 
+  summarise(total = sum(n)) %>% 
+  mutate(province_label_clean = reorder(province_label_clean, total)) -> words_total_province
+
+head(words_total_province)
+```
+
+```{r, fig.height=08, fig.width=12}
+words_total_province %>% 
+  ggplot(aes(total, province_label_clean)) +
+  geom_col(fill = "darkblue", width = 0.7) +
+  theme_classic() +
+  labs(x = "Number of words", y = "Province name", title = "Number of total words on inscriptions per Roman province", subtitle = "EDH dataset, n = 81,476 inscriptions") +
+  theme_linedraw(base_size = 10) 
+```
+
+# The most common words by Roman provinces
+```{r}
+EDH_tokenized %>% 
+  count(province_label_clean, word, sort = TRUE) %>% 
+  group_by(province_label_clean) %>% 
+  filter(n > 1000) %>%
+  mutate(province_label_clean = reorder(province_label_clean, n)) %>% 
+  ggplot(aes(y=province_label_clean, x=n)) +
+  geom_col(aes(fill=word), width=0.7) +
+  labs(x = "Number of words", y = "Province name", title = "The most common words on inscriptions per Roman province", subtitle = "EDH dataset, n = 81,476 inscriptions") +
+  theme_linedraw(base_size = 10) 
+  
+```
+
+# The most common words by type of an inscription (epitaph)
+```{r}
+EDH_tokenized %>% 
+  count(type_of_inscription_clean, word, sort = TRUE) %>% 
+  group_by(type_of_inscription_clean) %>% 
+  filter(type_of_inscription_clean == "epitaph") %>% 
+  filter(n > 1000) %>% 
+  mutate(word = reorder(word, n)) -> words_epitaph
+
+total_words_epitaph<- sum(words_epitaph$n)
+
+words_epitaph %>% 
+  ggplot(aes(y=word, x=n, color=n)) +
+  geom_col(width=0.7) + 
+  scale_color_gradient(low="blue", high="red") + 
+  theme_minimal() +
+  theme_linedraw(base_size = 9) +
+  labs(x = "Number of words", y = "Word", title = "The most common words on epitaphs", subtitle = "n = 123,039 words")
+  
+```
+
+# The most common words by type of an inscription (milestone)
+```{r}
+EDH_tokenized %>% 
+  count(type_of_inscription_clean, word, sort = TRUE) %>% 
+  group_by(type_of_inscription_clean) %>% 
+  filter(type_of_inscription_clean == "mile-/leaguestone") %>% 
+  filter(n > 100) %>% 
+  mutate(word = reorder(word, n)) -> words_milestone
+words_milestone
+
+total_words_milestone <- sum(words_milestone$n)
+
+words_milestone %>% 
+  ggplot(aes(y=word, x=n, color=n)) +
+  geom_col(width=0.6) + 
+  scale_color_gradient(low="blue", high="red") + 
+  theme_minimal() +
+  theme_linedraw(base_size = 9) +
+  labs(x = "Number of words", y = "Word", title = "The most common words on milestones", subtitle = "n = 24,986 words")
+ggsave(filename = "../figures/EDH_milestone_common_words.png", width = 8, height = 8)
+```
+
+# The most common words on milestones per province
+```{r}
+EDH_tokenized %>% 
+  filter(type_of_inscription_clean == "mile-/leaguestone") %>% 
+  count(province_label_clean, word, sort = TRUE) %>% 
+  group_by(province_label_clean) %>% 
+  filter(n > 50) %>%
+  mutate(province_label_clean = reorder(province_label_clean, n)) %>% 
+  ggplot(aes(y=province_label_clean, x=n)) +
+  geom_col(aes(fill=word), width=0.7) +
+  labs(x = "Number of words", y = "Province name", title = "The most common words on milestones per Roman province", subtitle = "EDH dataset, n = 81,476 inscriptions") +
+  theme_linedraw(base_size = 10) 
+  
+```
+
+```{r, warning=FALSE}
+library(wordcloud)
+
+EDH_tokenized %>% 
+  filter(type_of_inscription_clean == "mile-/leaguestone") %>% 
+  count(province_label_clean, word, sort = TRUE) %>% 
+  group_by(province_label_clean) %>% 
+  filter(n > 50) %>%
+  mutate(province_label_clean = reorder(province_label_clean, n)) %>% 
+  with(wordcloud(word, n, max.words = 200))
+```
+# Frequency of words
+Source: https://www.tidytextmining.com/tfidf.html
+```{r}
+insc_types_words <- EDH_tokenized %>% 
+  count(type_of_inscription_clean, word, sort = TRUE)
+
+total_words <- insc_types_words %>% 
+  group_by(type_of_inscription_clean) %>% 
+  summarize(total = sum(n))
+insc_types_words <- left_join(insc_types_words, total_words)
+insc_types_words
+```
+
+```{r, fig.height=10}
+ggplot(insc_types_words, aes(n/total, fill = type_of_inscription_clean)) +
+  geom_histogram(show.legend = FALSE) +
+  xlim(NA, 0.0009) +
+  facet_wrap(~type_of_inscription_clean, ncol = 4, scales = "free_y")
+ggsave(filename = "../figures/EDH_freq_words_insc_type.png", width = 8, height = 8)
+```
+
+## Rank of words (Zip's law)
+```{r}
+freq_by_rank <- insc_types_words %>% 
+  group_by(type_of_inscription_clean) %>% 
+  mutate(rank = row_number(), 
+         `term frequency` = n/total)
+
+freq_by_rank
+```
+```{r}
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = type_of_inscription_clean)) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = TRUE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+```{r}
+rank_subset <- freq_by_rank %>% 
+  filter(rank < 500,
+         rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subset)
+```
+
+```{r}
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = type_of_inscription_clean)) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = TRUE) + 
+  geom_abline(intercept = -0.62, slope = -1.1, color = "gray50", linetype = 2) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+Commentary: EDH corpus uses a lower percentage of the most common words than many collections of language.
+
+
+## Term frequency vs inverse document frequency
+```{r}
+insc_types_words <- insc_types_words %>%
+  bind_tf_idf(word, type_of_inscription_clean, n)
+
+insc_types_words
+```
+
+```{r}
+insc_types_words %>%
+  select(-total) %>%
+  arrange(desc(tf_idf))
+```
+
+```{r, fig.height=8}
+insc_types_words %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+  group_by(type_of_inscription_clean) %>% 
+  top_n(15) %>% 
+  ungroup() %>%
+  ggplot(aes(word, tf_idf, fill = type_of_inscription_clean)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, y = "tf-idf") +
+  facet_wrap(~type_of_inscription_clean, ncol = 4, scales = "free_y") +
+  coord_flip() +
+  labs(x = "word", y = "tf-idf", title = "Term frequency - inverse document frequency (tf-idf) by type of inscription", subtitle = "EDH dataset, n = 81,476 inscriptions") +
+  theme_linedraw(base_size = 10)
+ggsave("../figures/EDH_tf_idf_insc_type.png", width = 16, height = 16)
+```
+
