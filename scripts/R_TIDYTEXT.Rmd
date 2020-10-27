@@ -92,7 +92,7 @@ words_total_province %>%
   theme_linedraw(base_size = 10) 
 ```
 
-# The most common words by Roman provinces
+## The most common words by Roman provinces
 ```{r}
 EDH_tokenized %>% 
   count(province_label_clean, word, sort = TRUE) %>% 
@@ -106,7 +106,7 @@ EDH_tokenized %>%
   
 ```
 
-# The most common words by type of an inscription (epitaph)
+## The most common words by type of an inscription (epitaph)
 ```{r}
 EDH_tokenized %>% 
   count(type_of_inscription_clean, word, sort = TRUE) %>% 
@@ -127,7 +127,7 @@ words_epitaph %>%
   
 ```
 
-# The most common words by type of an inscription (milestone)
+## The most common words by type of an inscription (milestone)
 ```{r}
 EDH_tokenized %>% 
   count(type_of_inscription_clean, word, sort = TRUE) %>% 
@@ -149,7 +149,7 @@ words_milestone %>%
 ggsave(filename = "../figures/EDH_milestone_common_words.png", width = 8, height = 8)
 ```
 
-# The most common words on milestones per province
+## The most common words on milestones per province
 ```{r}
 EDH_tokenized %>% 
   filter(type_of_inscription_clean == "mile-/leaguestone") %>% 
@@ -177,6 +177,7 @@ EDH_tokenized %>%
 ```
 # Frequency of words
 Source: https://www.tidytextmining.com/tfidf.html
+Using term frequency and inverse document frequency allows us to find words that are characteristic for one document within a collection of documents.
 ```{r}
 insc_types_words <- EDH_tokenized %>% 
   count(type_of_inscription_clean, word, sort = TRUE)
@@ -260,5 +261,79 @@ insc_types_words %>%
   labs(x = "word", y = "tf-idf", title = "Term frequency - inverse document frequency (tf-idf) by type of inscription", subtitle = "EDH dataset, n = 81,476 inscriptions") +
   theme_linedraw(base_size = 10)
 ggsave("../figures/EDH_tf_idf_insc_type.png", width = 16, height = 16)
+```
+
+## Custom stopwords list
+```{r}
+mystopwords <- tibble(word = c("et", "in", "qui", "i", "v", "ii", "ex"))
+```
+
+# N-grams and correlations
+## Bigrams
+```{r}
+insc_bigrams <- EDH_tibble %>%
+  select(clean_text_interpretive_word, type_of_inscription_clean, province_label_clean) %>% 
+  unnest_tokens(bigram, clean_text_interpretive_word, token = "ngrams", n = 2)
+head(insc_bigrams)
+```
+```{r}
+insc_bigrams %>% 
+  count(bigram, sort = TRUE)
+```
+
+```{r}
+bigrams_separated <- insc_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams_separated %>% 
+  count(word1, word2, sort = TRUE)
+```
+### Analysis of bi-grams
+
+What other words occur together with the word passuum. 
+```{r}
+bigrams_separated %>%
+  filter(word2 == "passuum") %>%
+  count(type_of_inscription_clean, word1, sort = TRUE)
+```
+
+```{r}
+bigrams_separated %>%
+  filter(word1 == "passuum") %>%
+  count(type_of_inscription_clean, word2, sort = TRUE)
+```
+### Frequencies in bigram
+```{r}
+bigram_tf_idf <- insc_bigrams%>%
+  count(type_of_inscription_clean, bigram) %>%
+  bind_tf_idf(bigram, type_of_inscription_clean, n) %>%
+  arrange(desc(tf_idf))
+
+bigram_tf_idf
+```
+```{r}
+bigram_tf_idf %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(bigram = factor(bigram, levels = rev(unique(bigram)))) %>% 
+  group_by(type_of_inscription_clean) %>% 
+  top_n(5) %>% 
+  ungroup() %>%
+  ggplot(aes(bigram, tf_idf, fill = type_of_inscription_clean)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, y = "tf-idf") +
+  facet_wrap(~type_of_inscription_clean, ncol = 3, scales = "free_y") +
+  coord_flip()
+ggsave("../figures/EDH_bigrams_tf_idf_insc_type.png", width = 16, height = 20)
+```
+
+
+## Tri-grams
+```{r}
+insc_trigram <- EDH_tibble %>%
+  select(clean_text_interpretive_word, type_of_inscription_clean, province_label_clean) %>%
+  unnest_tokens(trigram, clean_text_interpretive_word, token = "ngrams", n = 3) %>%
+  separate(trigram, c("word1", "word2", "word3"), sep = " ") %>%
+  count(word1, word2, word3, sort = TRUE)
+insc_trigram
 ```
 
