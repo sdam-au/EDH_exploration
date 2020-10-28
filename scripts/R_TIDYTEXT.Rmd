@@ -316,16 +316,53 @@ bigram_tf_idf %>%
   arrange(desc(tf_idf)) %>%
   mutate(bigram = factor(bigram, levels = rev(unique(bigram)))) %>% 
   group_by(type_of_inscription_clean) %>% 
-  top_n(5) %>% 
+  top_n(10) %>% 
   ungroup() %>%
   ggplot(aes(bigram, tf_idf, fill = type_of_inscription_clean)) +
   geom_col(show.legend = FALSE) +
   labs(x = NULL, y = "tf-idf") +
   facet_wrap(~type_of_inscription_clean, ncol = 3, scales = "free_y") +
-  coord_flip()
-ggsave("../figures/EDH_bigrams_tf_idf_insc_type.png", width = 16, height = 20)
+  coord_flip() +
+  theme_linedraw(base_size = 10) 
+ggsave("../figures/EDH_bigrams_tf_idf_insc_type.png", width = 20, height = 20)
+```
+### Visualising bigrams as network
+
+```{r}
+library(igraph)
+
+bigram_graph<- bigrams_separated %>% 
+  count(word1, word2, sort = TRUE) %>% 
+  filter(n > 500) %>%
+  graph_from_data_frame() 
+bigram_graph
 ```
 
+```{r}
+library(ggraph)
+set.seed(1000)
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+ggsave("../figures/EDH_bigrams_networks.png", width = 10, height = 10)
+```
+
+#### Another network graph
+```{r}
+set.seed(1000)
+
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                 arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 4) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+ggsave("../figures/EDH_bigrams_networks_2.png", width = 10, height = 10)
+```
 
 ## Tri-grams
 ```{r}
@@ -335,5 +372,93 @@ insc_trigram <- EDH_tibble %>%
   separate(trigram, c("word1", "word2", "word3"), sep = " ") %>%
   count(word1, word2, word3, sort = TRUE)
 insc_trigram
+```
+
+
+## Counting and correlating pairs of words with the widyr package
+```{r}
+library(widyr)
+
+# count words co-occuring within sections
+word_pairs<- EDH_tokenized %>% 
+  pairwise_count(word, id, sort = TRUE)
+
+word_pairs
+```
+```{r}
+word_pairs %>%
+  filter(item1 == "votum")
+```
+
+###  Pairwise correlation
+Correlation among words, which indicates how often they appear together relative to how often they appear separately.
+```{r}
+word_cors <- EDH_tokenized %>%
+  group_by(word) %>%
+  filter(n() >= 100) %>%
+  pairwise_cor(word, id, sort = TRUE)
+
+word_cors
+```
+```{r}
+word_cors %>%
+  filter(item1 == "votum")
+```
+#### Correlation of word related vocabulary
+```{r}
+word_cors %>%
+  filter(item1 %in% c("milia", "passuum", "via", "viator")) %>%
+  group_by(item1) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(item2 = reorder(item2, correlation)) %>%
+  ggplot(aes(item2, correlation)) +
+  geom_bar(stat = "identity", aes(fill=correlation), width=0.7) + 
+  facet_wrap(~ item1, scales = "free_y") +
+  theme_minimal() +
+  coord_flip() +
+  labs(y = "Correlation of word-pairs", x = "Word", title = "The most common word-pair correlations on inscriptions", subtitle = "EDH dataset, n = 81,476 inscriptions") 
+  
+```
+#### Visualisation of correlations 
+```{r}
+word_cors_3000 <- EDH_tokenized %>%
+  group_by(word) %>%
+  filter(n() >= 3000) %>%
+  pairwise_cor(word, id, sort = TRUE)
+
+set.seed(1000)
+
+word_cors_3000 %>%
+  filter(correlation > .15) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_void()
+```
+# Converting to non-tidy format (matrix)
+```{r}
+library(tm)
+EDH_dtm <- EDH_tokenized %>%
+  count(type_of_inscription_clean, word) %>%
+  cast_dtm(type_of_inscription_clean, word, n)
+EDH_dtm
+```
+
+```{r}
+library(quanteda)
+EDH_dfm <- EDH_tokenized %>%
+  count(type_of_inscription_clean, word) %>%
+  cast_dfm(type_of_inscription_clean, word, n)
+EDH_dfm
+```
+## Exploration of matrix
+```{r}
+# how many words has milestone
+sum(EDH_dfm["mile-/leaguestone",])
+max(EDH_dfm["mile-/leaguestone",])
+milestone <- EDH_dfm["mile-/leaguestone",]
 ```
 
