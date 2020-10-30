@@ -1,0 +1,203 @@
+---
+title: "Exploration of the epigraphic text using TidyText approach"
+author: "Petra Hermankova"
+date: "26/10/2020"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    toc_depth: 2
+    df_print: paged
+---
+
+# Initial setup
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE}
+devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+library(tidyverse)
+library(sdam)
+library(jsonlite)
+library(leaflet)
+library(tidytext)
+library(udpipe)
+```
+
+## Loading data
+1. Load the dataset, if you have Sciencedata.dk credentials
+
+```{r, echo=FALSE}
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+```{r, loading data}
+resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+```
+
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+2. Make a list and tibble from the request function
+```{r}
+list_json <- jsonlite::fromJSON(resp)
+EDH_tibble <- as_tibble(list_json)
+```
+
+3. Display the first 6 records
+```{r}
+head(EDH_tibble)
+```
+
+# Text mining using udpipe package
+source: https://cran.r-project.org/web/packages/udpipe/vignettes/udpipe-annotation.html#udpipe_-_general
+
+## Download model for given language
+```{r}
+#dl <- udpipe_download_model(language = "ancient_greek")
+dl <- udpipe_download_model(language = "latin")
+str(dl)
+```
+
+## Give the full path to the model and load it to R
+```{r}
+# udmodel_anc_greek <- udpipe_load_model(file = "ancient_greek-perseus-ud-2.4-190531.udpipe")
+
+udmodel_latin <- udpipe_load_model(file = "latin-perseus-ud-2.4-190531.udpipe")
+```
+
+## Anotate the text using UDpipe
+```{r}
+#udpipe_text <- as.data.frame(udpipe_annotate(udmodel_anc_greek, x = EDH_tibble$clean_text_interpretive_word))
+udpipe_text <- as.data.frame(udpipe_annotate(udmodel_latin, x = EDH_tibble$clean_text_interpretive_word))
+str(udpipe_text)
+```
+
+## Overview of linguistic word categories
+```{r}
+table(udpipe_text$upos)
+```
+
+```{r}
+nouns <- udpipe_text %>% 
+  filter(udpipe_text$upos == "NOUN") 
+```
+
+```{r}
+verbs <- udpipe_text %>% 
+  filter(udpipe_text$upos == "VERB") 
+```
+
+```{r}
+punctuation <- udpipe_text %>% 
+  filter(udpipe_text$upos == "PUNCT") 
+```
+
+## The most frequent of all word lemmata
+```{r}
+udpipe_text %>% 
+  count(lemma, sort = TRUE) %>%
+  filter(n > 1000) %>% 
+  mutate(lemma = reorder(lemma, n)) %>%
+  print()
+```
+
+## The most frequent of nouns lemmata
+```{r}
+nouns %>% 
+  count(lemma, sort = TRUE) %>%
+  filter(n > 1000) %>% 
+  mutate(lemma = reorder(lemma, n)) %>%
+  print()
+```
+
+```{r}
+verbs %>% 
+  count(lemma, sort = TRUE) %>%
+  filter(n > 1000) %>% 
+  mutate(lemma = reorder(lemma, n)) %>%
+  print()
+```
+
+```{r}
+punctuation %>% 
+  count(lemma, sort = TRUE) %>%
+  filter(n > 10) %>% 
+  mutate(lemma = reorder(lemma, n)) %>%
+  print()
+```
+
+
+## Join the same for 10,000 sample
+```{r}
+tail(udpipe_text)
+udpipe_text <- udpipe_text %>% 
+  mutate(insc_id = (as.numeric(str_replace(doc_id, pattern = "doc", replacement = ""))))
+
+EDH_tibble <- EDH_tibble %>% 
+  mutate(id_num = (as.numeric(str_replace(id, pattern = "HD", replacement = ""))))
+
+full_appended <- left_join(EDH_tibble, udpipe_text, by = c("id_num" = "insc_id"))
+head(full_appended)
+```
+
+
+
+
+
+
+
+
+
+
+
+# defining vocabulary
+```{r}
+road_vocabulary1 <- c("via", "milium", "viator")
+
+road_vocabulary2 <- c("παροδεῖτα")
+```
+
+# searching for vocabulary in lemmata
+```{r}
+full_appended %>%
+  count(lemma, sort = TRUE) %>%
+  filter(lemma %in% road_vocabulary1) %>% 
+  print()
+```
+
+```{r}
+road_text <- full_appended %>%
+  filter(lemma %in% road_vocabulary1) %>% 
+  print()
+```
+
+# show location of road-detected inscriptions
+```{r}
+road_selection <- road_text %>% 
+  unlist(road_text$hdr1) %>% 
+  unlist(road_text$hdr2) %>% 
+  print() 
+road_selection
+
+write_csv(road_selection, "./road_selection.csv")
+
+```
+
+# tokenizing using tidytext approach
+
+```{r}
+clean_interpretive_tokenized <- PHI_tibble %>%
+  unnest_tokens(word, clean_text_interpretive_word, token = stringr::str_split, pattern = " ") %>%
+  drop_na(word) 
+```
+
+
+
+
+
+

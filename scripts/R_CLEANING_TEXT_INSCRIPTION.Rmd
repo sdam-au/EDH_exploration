@@ -777,12 +777,3 @@ texts$clean_text_interpretive_word %>% str_subset(pattern = "\\.") %>% unique() 
 
 
 
-
-
-
-
-
-
-
-
-
