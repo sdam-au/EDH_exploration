@@ -132,7 +132,7 @@ punctuation %>%
 ```
 
 
-## Join the same for 10,000 sample
+## Join the entire dataset with the NLP UD pipe output
 ```{r}
 tail(udpipe_text)
 udpipe_text <- udpipe_text %>% 
@@ -146,23 +146,16 @@ head(full_appended)
 ```
 
 
+# Search for Road-related inscription
 
-
-
-
-
-
-
-
-
-# defining vocabulary
+## Defining road related vocabulary
 ```{r}
-road_vocabulary1 <- c("via", "milium", "viator")
+road_vocabulary1 <- c("via", "pons", "mutatio", "mansio", "caput viae", "miliarium", "millia passuum", "passus", "carpentum", "porta", "vicus", "clivus", "semita", "angiportus", "scala", "gradus", "gressus", "incessus", "leuga", "tabellarium", "tabelarium", "itinerarium", "annona", "actus", "cursus publicus", "vehiculatio", "vehiculum", "iter", "iumentum", "Via publica", "Via privata", "Via vicinalis", "Via terrena", "viam munire", "viam fecit", "viam refecit", "viam restituit", "curator viarum", "compitum", "deverticulum", "diverticulum", "civitas", "viator", "arcus", "statio", "terminus", "lares viales", "lares compitales", "Redicolus", "Ianus")
 
 road_vocabulary2 <- c("παροδεῖτα")
 ```
 
-# searching for vocabulary in lemmata
+## Searching for predefined vocabulary in lemmata
 ```{r}
 full_appended %>%
   count(lemma, sort = TRUE) %>%
@@ -170,34 +163,34 @@ full_appended %>%
   print()
 ```
 
+### Separating the subdataset containing the predefined vocabulary
 ```{r}
 road_text <- full_appended %>%
   filter(lemma %in% road_vocabulary1) %>% 
   print()
 ```
 
-# show location of road-detected inscriptions
+### What type of inscriptions contain selected vocabulary
 ```{r}
-road_selection <- road_text %>% 
-  unlist(road_text$hdr1) %>% 
-  unlist(road_text$hdr2) %>% 
-  print() 
-road_selection
-
-write_csv(road_selection, "./road_selection.csv")
-
+road_text %>% 
+  count(type_of_inscription_clean, sort=TRUE)
 ```
 
-# tokenizing using tidytext approach
-
+### What are the most common words (lemma and token)
 ```{r}
-clean_interpretive_tokenized <- PHI_tibble %>%
-  unnest_tokens(word, clean_text_interpretive_word, token = stringr::str_split, pattern = " ") %>%
-  drop_na(word) 
+road_text %>% 
+  count(lemma, token, sort=TRUE)
 ```
 
+### How many unique inscriptions there are
+```{r}
+length(unique(road_text$id_num))
+```
 
-
-
-
+### Select only the text of inscriptions once
+```{r}
+road_text %>% 
+  select(id_num, clean_text_interpretive_word) %>% 
+  distinct(id_num, .keep_all = TRUE)
+```
 
