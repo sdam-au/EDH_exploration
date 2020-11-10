@@ -40,7 +40,6 @@ resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk
 remove(mycred_secret)
 ```
 
-
 2. Make a list and tibble from the request function
 ```{r, transform to tibble}
 list_json <- jsonlite::fromJSON(resp)
@@ -57,6 +56,17 @@ head(EDH_tibble)
 EDH uses linked open data (LOD) from EAGLE Project vocabularies (https://www.eagle-network.eu/resources/vocabularies/) in the following five XML tags:
 `Object Type`, `Keywords`, `Material`, `RS Execution`, `RS Decoration`.
 
+All records consist of the attributes: 
+1) Eagle Linked Open Data numeric code for vocabulary, i.e. 257, extracted from the ref within XML tag. 
+2) Free text description, extracted from the XML tag.
+
+Example of record in XML:
+```
+<support>
+  <objectType ref="http://www.eagle-network.eu/voc/objtyp/lod/257">Tafel</objectType>
+</support>
+```
+
 The aim of this script is to analyse the usage of EAGLE vocabularies in EDH as part of the Epigraphy.info working group tasked with cleaning up the EAGLE vocabularies.
 
 ```{r, select attributes}
@@ -66,8 +76,30 @@ EDH_eagle<- EDH_tibble %>%
 EDH_eagle
 ```
 
+## Inscriptions with missing data from XML files
+
+Data obtained only through API, probably die to an internal error in scripting. To be explored.
+```{r}
+EDH_tibble %>% 
+  filter(is.na(support_objecttype)) -> missingXML
+missingXML
+```
+
+```{r, echo=FALSE, eval=FALSE}
+EDH_missingXML_json <- jsonlite::toJSON(missingXML)
+
+mycred_secret<- readLines("~/mysecret.txt")
+write(EDH_missingXML_json, file="EDH_missingXML_20201110.json")
+  request("EDH_missingXML_20201110.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public",
+        method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
+remove(mycred_secret)
+```
+
+
 ## Object 
-Support tag, tag objectType.
+Attributes categorising the inscribed object.
+
+XML: Support tag, tag objectType.
 
 Example of record in XML: 
 ```
@@ -81,6 +113,7 @@ EDH_eagle %>%
   select(support_objecttype, support_objecttype_text) %>% 
   head()
 ```
+
 ### List of all related Eagle vocabularies and their count 
 ```{r}
 EDH_eagle %>% 
@@ -180,6 +213,13 @@ EDH_eagle %>%
   count(support_objecttype_text, sort=TRUE)
 ```
 
+### Missing Eagle LOD, text present
+```{r}
+EDH_eagle %>% 
+  select(support_objecttype, support_objecttype_text) %>% 
+  filter(support_objecttype == "") %>% 
+  count(support_objecttype_text, sort=TRUE)
+```
 
 ### All unique values of text input
 ```{r}
@@ -187,7 +227,8 @@ unique(EDH_eagle$support_objecttype_text)
 ```
 
 ## Inscription type
-Keywords tag, term tag.
+Attributes categorising the type of inscription.
+XML: Keywords tag, term tag.
 
 Example of record in XML: 
 ```
@@ -203,7 +244,7 @@ EDH_eagle %>%
   head()
 ```
 
-### List of all Eagle vocabularies and their count
+### List of all related Eagle vocabularies and their count
 ```{r}
 EDH_eagle %>% 
   select(keywords_term, keywords_term_text) %>% 
@@ -211,7 +252,104 @@ EDH_eagle %>%
 ```
 
 ### Overview of the ten most common vocabularies
-TBD
+
+#### Keyword term 92 (Sepulcralis)
+https://www.eagle-network.eu/voc/typeins/lod/92.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 92) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 143 (Ignoratur)
+https://www.eagle-network.eu/voc/typeins/lod/143.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 143) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 80 (Weihinschrift)
+https://www.eagle-network.eu/voc/typeins/lod/80.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 80) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 311 (Besitzer-/Herstellerinschrift)
+https://www.eagle-network.eu/voc/typeins/lod/311.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 311) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 69 (Honorific inscription)
+https://www.eagle-network.eu/voc/typeins/lod/69.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 69) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 261 (Bau-/Stifterinschrift)
+https://www.eagle-network.eu/voc/typeins/lod/261.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 261) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 102 (Meilen-/Leugenstein)
+https://www.eagle-network.eu/voc/typeins/lod/102.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 102) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 115 (Aufschrift)
+https://www.eagle-network.eu/voc/typeins/lod/115.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 115) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 73 (Akklamation)
+https://www.eagle-network.eu/voc/typeins/lod/73.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 73) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+#### Keyword term 91 (Militärdiplom)
+https://www.eagle-network.eu/voc/typeins/lod/91.html
+
+```{r}
+EDH_eagle %>% 
+  filter(keywords_term == 91) %>% 
+  count(keywords_term_text, sort=TRUE)
+```
+
+### Missing Eagle LOD, text present
+```{r}
+EDH_eagle %>% 
+  select(keywords_term, keywords_term_text) %>% 
+  filter(keywords_term == "") %>% 
+  count(keywords_term_text, sort=TRUE)
+```
 
 ### All unique values of text input
 ```{r}
@@ -221,7 +359,8 @@ unique(EDH_eagle$keywords_term_text)
 
 
 ## Material
-Support tag, material tag.
+Attributes categorising the inscribed material.
+XML: Support tag, material tag.
 
 Example of record in XML: 
 ```
@@ -289,17 +428,6 @@ EDH_eagle %>%
   count(support_material_text, sort=TRUE)
 ```
 
-#### Material missing Eagle LOD, text present
-Example: ```<material>Marmor, geädert / farbig</material>```
-
-```{r}
-EDH_eagle %>% 
-  select(support_material, support_material_text) %>% 
-  filter(support_material == "") %>% 
-  count(support_material_text, sort=TRUE)
-```
-
-
 #### Material 109 (Aes)	
 https://www.eagle-network.eu/voc/material/lod/109.html
 
@@ -336,26 +464,15 @@ EDH_eagle %>%
   count(support_material_text, sort=TRUE)
 ```
 
+### Material missing Eagle LOD, text present
+Example: ```<material>Marmor, geädert / farbig</material>```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```{r}
+EDH_eagle %>% 
+  select(support_material, support_material_text) %>% 
+  filter(support_material == "") %>% 
+  count(support_material_text, sort=TRUE)
+```
 
 ### All unique values of text input
 ```{r}
@@ -363,7 +480,8 @@ unique(EDH_eagle$support_material_text)
 ```
 
 ## Writing
-Layout tag, type execution.
+Attributes categorising the execution of writing.
+XML: Layout tag, type execution.
 
 Example of record in XML: 
 ```
@@ -412,14 +530,6 @@ EDH_eagle %>%
   count(layout_execution_text, sort=TRUE)
 ```
 
-#### Layout execution empty tag, but text present
-
-```{r}
-EDH_eagle %>% 
-  filter(layout_execution == "") %>% 
-  count(layout_execution_text, sort=TRUE)
-```
-
 #### Layout execution 96 (Gemalt / Dipinto)
 https://www.eagle-network.eu/voc/writing/lod/96.html
 
@@ -435,14 +545,6 @@ https://www.eagle-network.eu/voc/writing/lod/145.html
 ```{r}
 EDH_eagle %>% 
   filter(layout_execution == 145) %>% 
-  count(layout_execution_text, sort=TRUE)
-```
-
-#### Layout execution NA (tag completely missing in XML)
-```{r}
-EDH_eagle %>% 
-  select(layout_execution, layout_execution_text) %>% 
-  filter(is.na(layout_execution)) %>% 
   count(layout_execution_text, sort=TRUE)
 ```
 
@@ -464,13 +566,29 @@ EDH_eagle %>%
   count(layout_execution_text, sort=TRUE)
 ```
 
+### Layout execution empty tag, but text present
+```{r}
+EDH_eagle %>% 
+  filter(layout_execution == "") %>% 
+  count(layout_execution_text, sort=TRUE)
+```
+
+### Layout execution NA (tag completely missing in XML)
+```{r}
+EDH_eagle %>% 
+  select(layout_execution, layout_execution_text) %>% 
+  filter(is.na(layout_execution)) %>% 
+  count(layout_execution_text, sort=TRUE)
+```
+
 ### All unique values of text input
 ```{r}
 unique(EDH_eagle$layout_execution_text)
 ```
 
 ## Decoration 
-Support, Rs tag, type decoration.
+Attributes categorising the type of decoration. In EDH very limited use - not the full potential of LOD.
+XML: Support, Rs tag, type decoration.
 
 Example of record in XML:
 ```
