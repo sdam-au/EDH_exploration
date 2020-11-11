@@ -1,33 +1,30 @@
 ---
-title: "Use of Eagle vocabularies in EDH"
+title: "Use of Eagle vocabularies in the EDH dataset"
 author: "Petra Hermankova, petra.hermankova@cas.au.dk"
-date: "09/11/2020"
+date: "11/11/2020"
 output:
   html_document:
     theme: united
     toc: yes
     toc_float: true
     number_sections: true
+    smooth_scroll: true
     toc_depth: 4
     df_print: paged
+    highlight: monochrome
 ---
 
-
-
-## Setup of the environment:
-
+## Environment setup
 ```{r setup, echo=TRUE, message=FALSE}
 devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
 #devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
 library(tidyverse)
 library(sdam)
 library(jsonlite)
-library(leaflet)
 ```
 
-# Loading data
+## Loading data
 1. Load the dataset, if you have Sciencedata.dk credentials
-
 ```{r, echo=FALSE}
 mycred_secret<- readLines("~/mysecret.txt")
 ```
@@ -46,19 +43,16 @@ list_json <- jsonlite::fromJSON(resp)
 EDH_tibble <- as_tibble(list_json)
 ```
 
-3. Display the first 6 records
+3. Display the first 6 records of the full dataset
 ```{r, display head}
 head(EDH_tibble)
 ```
+If you are interested in how this dataset was compiled from the EDH API and XML data dumps, see the Github repository: https://github.com/sdam-au/EDH_ETL.
 
-# Use of EAGLE vocabularies in EDH
+# Use of EAGLE vocabularies in the EDH
 
-EDH uses linked open data (LOD) from EAGLE Project vocabularies (https://www.eagle-network.eu/resources/vocabularies/) in the following five XML tags:
+Epigraphic Database Heidelber (https://edh-www.adw.uni-heidelberg.de/) uses linked open data (LOD) from EAGLE Project vocabularies (https://www.eagle-network.eu/resources/vocabularies/) in the following five Epidoc XML tags:
 `Object Type`, `Keywords`, `Material`, `RS Execution`, `RS Decoration`.
-
-All records consist of the attributes: 
-1) Eagle Linked Open Data numeric code for vocabulary, i.e. 257, extracted from the ref within XML tag. 
-2) Free text description, extracted from the XML tag.
 
 Example of record in XML:
 ```
@@ -66,8 +60,13 @@ Example of record in XML:
   <objectType ref="http://www.eagle-network.eu/voc/objtyp/lod/257">Tafel</objectType>
 </support>
 ```
+In our processed version of the EDH dataset, all records consist of the following attributes: 
 
-The aim of this script is to analyse the usage of EAGLE vocabularies in EDH as part of the Epigraphy.info working group tasked with cleaning up the EAGLE vocabularies.
+* Eagle Linked Open Data numeric code for vocabulary, i.e. 257, extracted from the reference within the Epidoc XML tag. 
+
+* Free text description, extracted from the XML tag.
+
+The aim of this script is to analyse the usage of EAGLE vocabularies in the EDH as part of the Epigraphy.info working group tasked with cleaning up the EAGLE vocabularies.
 
 ```{r, select attributes}
 EDH_eagle<- EDH_tibble %>% 
@@ -78,7 +77,7 @@ EDH_eagle
 
 ## Inscriptions with missing data from XML files
 
-Data obtained only through API, probably die to an internal error in scripting. To be explored.
+Total 346 record are missing information extracted from XML files (due to delay in availability of published data through EDH data dumps on their website). However, at least partial information about them can be extracted from the EDH API, but for the purpose of the current evaluation of the Eagle vocabularies are these 346 records considered as missing as we cannot access their respective XML files with the vocabularies.
 ```{r}
 EDH_tibble %>% 
   filter(is.na(support_objecttype)) -> missingXML
@@ -95,9 +94,36 @@ write(EDH_missingXML_json, file="EDH_missingXML_20201110.json")
 remove(mycred_secret)
 ```
 
+## Total number of Eagle vocabularies in EDH dataset
+```{r}
+#object
+EDH_eagle %>% 
+  filter(!is.na(support_objecttype) & support_objecttype != "") %>% nrow() -> object_total
+
+#type inscription
+EDH_eagle %>% 
+  filter(!is.na(keywords_term) & keywords_term != "" ) %>% nrow() -> typeinsc_total
+
+#material
+EDH_eagle %>% 
+  filter(!is.na(support_material) & support_material != "") %>% nrow() -> material_total
+
+#writing
+EDH_eagle %>% 
+  filter(!is.na(layout_execution) & layout_execution != "") %>% nrow() -> writing_total
+
+#decoration
+EDH_eagle %>% 
+  filter(!is.na(support_decoration) & support_decoration != "") %>% nrow() -> decor_total
+
+
+#how many eagle LOD has been used in the EDH
+Eagle_total <- object_total + typeinsc_total + material_total + writing_total + decor_total
+Eagle_total
+```
 
 ## Object 
-Attributes categorising the inscribed object.
+Attributes categorising the inscribed object, used `r object_total` times.
 
 XML: Support tag, tag objectType.
 
@@ -114,12 +140,19 @@ EDH_eagle %>%
   head()
 ```
 
+
 ### List of all related Eagle vocabularies and their count 
 ```{r}
 EDH_eagle %>% 
   select(support_objecttype, support_objecttype_text) %>% 
   count(support_objecttype, sort=TRUE)
 ```
+
+### Total number of unique vocabularies
+```{r}
+length(unique(EDH_eagle$support_objecttype))
+```
+
 
 ### Overview of the ten most common vocabularies
 
@@ -227,7 +260,8 @@ unique(EDH_eagle$support_objecttype_text)
 ```
 
 ## Inscription type
-Attributes categorising the type of inscription.
+Attributes categorising the type of inscription, used `r typeinsc_total` times.
+
 XML: Keywords tag, term tag.
 
 Example of record in XML: 
@@ -251,6 +285,10 @@ EDH_eagle %>%
   count(keywords_term, sort=TRUE)
 ```
 
+### Total number of unique vocabularies
+```{r}
+length(unique(EDH_eagle$keywords_term))
+```
 ### Overview of the ten most common vocabularies
 
 #### Keyword term 92 (Sepulcralis)
@@ -359,10 +397,11 @@ unique(EDH_eagle$keywords_term_text)
 
 
 ## Material
-Attributes categorising the inscribed material.
+Attributes categorising the inscribed material, used `r material_total` times.
+
 XML: Support tag, material tag.
 
-Example of record in XML: 
+Example of record in XML (with missing Eagle LOD): 
 ```
 <support>
   <material>Marmor, geädert / farbig</material>
@@ -380,6 +419,11 @@ EDH_eagle %>%
 EDH_eagle %>% 
   select(support_material, support_material_text) %>% 
   count(support_material, sort=TRUE)
+```
+
+### Total number of unique vocabularies
+```{r}
+length(unique(EDH_eagle$support_material))
 ```
 
 ### Overview of the ten most common vocabularies
@@ -480,7 +524,8 @@ unique(EDH_eagle$support_material_text)
 ```
 
 ## Writing
-Attributes categorising the execution of writing.
+Attributes categorising the execution of writing, used `r writing_total` times.
+
 XML: Layout tag, type execution.
 
 Example of record in XML: 
@@ -500,6 +545,11 @@ EDH_eagle %>%
 EDH_eagle %>% 
   select(layout_execution, layout_execution_text) %>% 
   count(layout_execution, sort=TRUE)
+```
+
+### Total number of unique vocabularies
+```{r}
+length(unique(EDH_eagle$layout_execution))
 ```
 
 ### Overview of the ten most common vocabularies
@@ -587,7 +637,8 @@ unique(EDH_eagle$layout_execution_text)
 ```
 
 ## Decoration 
-Attributes categorising the type of decoration. In EDH very limited use - not the full potential of LOD.
+Attributes categorising the type of decoration. In EDH very limited use - not the full potential of LOD, used `r decor_total` times.
+
 XML: Support, Rs tag, type decoration.
 
 Example of record in XML:
@@ -597,6 +648,11 @@ Example of record in XML:
 https://www.eagle-network.eu/voc/decor/lod/1000.html = nein
 https://www.eagle-network.eu/voc/decor/lod/2000.html, 2000 = ja, 
 NA = missing information.
+
+### Total number of unique vocabularies
+```{r}
+length(unique(EDH_eagle$support_decoration))
+```
 
 ### List of all Eagle vocabularies and their count 
 ```{r}
