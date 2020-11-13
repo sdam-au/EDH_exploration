@@ -414,7 +414,7 @@ EDH_eagle %>%
   head()
 ```
 
-### List of all Eagle vocabularies and their count 
+### List of all related Eagle vocabularies and their count 
 ```{r}
 EDH_eagle %>% 
   select(support_material, support_material_text) %>% 
@@ -540,7 +540,7 @@ EDH_eagle %>%
   select(layout_execution, layout_execution_text) %>%
   head()
 ```
-### List of all Eagle vocabularies and their count 
+### List of all related Eagle vocabularies and their count 
 ```{r}
 EDH_eagle %>% 
   select(layout_execution, layout_execution_text) %>% 
@@ -645,16 +645,19 @@ Example of record in XML:
 ```
 <rs type="decoration" ref="http://www.eagle-network.eu/voc/decor/lod/1000">nein</rs>
 ```
+
 https://www.eagle-network.eu/voc/decor/lod/1000.html = nein
-https://www.eagle-network.eu/voc/decor/lod/2000.html, 2000 = ja, 
-NA = missing information.
+
+https://www.eagle-network.eu/voc/decor/lod/2000.html, 2000 = ja
+
+NA = missing information
 
 ### Total number of unique vocabularies
 ```{r}
 length(unique(EDH_eagle$support_decoration))
 ```
 
-### List of all Eagle vocabularies and their count 
+### List of all related Eagle vocabularies and their count 
 ```{r}
 EDH_eagle %>% 
   count(support_decoration, sort=TRUE)
