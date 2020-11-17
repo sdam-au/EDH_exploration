@@ -123,10 +123,55 @@ EDH_unnested$status %>%
 ## What is the ratio of different statuses, e.g. slave vs freedman
 
 ```{r}
-EDH_unnested %>% 
-  select(status) %>% 
-  count(status, sort = TRUE)
+str_split_fixed(EDH_unnested$status, ";", n=3) %>% 
+  as.data.frame() -> status
+
+status %>% 
+  cbind(combined = c(status$V1,status$V2,status$V3)) %>% 
+  filter(combined != "") %>% 
+  mutate(combined_clean = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>% 
+  mutate(combined_clean = str_replace_all(string = combined_clean, pattern = "^ ", replacement = "")) %>% 
+  count(combined_clean, sort=TRUE) -> status_counts
+
+status_counts 
 ```
+
+```{r}
+status_counts %>% 
+  #sort(status_counts$combined_clean) %>% 
+  ggplot(aes(y=fct_rev(combined_clean), x=n), size = n) +
+  geom_point(color="red") +
+  labs(x = "Number of instances", y = "Status in EDH", title = "Overview of status references used in EDH dataset", subtitle = "n = 81,476 inscriptions" ) +
+    theme_linedraw(base_size = 12) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## How many inscriptions have ‘Age’ category?
@@ -217,7 +262,7 @@ epitaph %>%
   select(`age: years`, province_label_clean) %>% 
   mutate(age_years = as.numeric(str_extract(epitaph$'age: years', pattern = "[:digit:]+"))) %>% 
   count(age_years, province_label_clean) %>% 
-  ggplot(aes(x=age_years, y= province_label_clean)) + geom_point(alpha=0.5, color="darkblue") +
+  ggplot(aes(x=age_years, y= fct_rev(province_label_clean))) + geom_point(alpha=0.5, color="darkblue") +
   theme_minimal()
 dir.create("../figures")
 ggsave("../figures/Age_years_provinces.png", width = 8, height = 8) 
@@ -226,11 +271,14 @@ ggsave("../figures/Age_years_provinces.png", width = 8, height = 8)
 
 ## What is the average age of people on funerary inscriptions by province
 
-
 ```{r}
 epitaph %>% 
   select(`age: years`, province_label_clean) %>% 
   mutate(age_years = as.numeric(str_extract(epitaph$'age: years', pattern = "[:digit:]+"))) -> epitaph 
+epitaph 
+```
+
+```{r}
 
 # frequency of with which people state the age in years by provinces
 epitaph %>% 
@@ -247,14 +295,14 @@ describeBy(epitaph$age_years, group = epitaph$province_label_clean, mat = TRUE, 
 head(age_provinces)
 ```
 
-```{r}
+```{r, fig.height=12}
 age_provinces %>% 
   select(group1, mean) %>% 
-  ggplot(aes(y=group1, x=mean)) +
+  ggplot(aes(y=fct_rev(group1), x=mean)) +
   geom_col(color="white", fill="blue", width=1, stat="identity") +
   coord_cartesian(xlim=c(0,80)) +
   theme_minimal() +
-  theme(text = element_text(size=15)) +
+  theme(text = element_text(size=14)) +
   labs(y="Roman province", x="Years", title= "Average age of people on inscriptions in the EDH database", subtitle = "n= 7993 people" ) +
   
 ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
