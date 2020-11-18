@@ -309,3 +309,86 @@ ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12)
 
 ```
 
+## What is the gender ratio of people on funerary inscriptions by province
+
+```{r}
+epitaph %>% 
+  select(gender) %>% 
+  count(gender, sort=TRUE) %>% 
+  mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
+  ggplot(aes(y=fct_rev(gender), x=n)) +
+  geom_col(color="white", fill="yellow", width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,30000)) +
+  theme_minimal() +
+  theme(text = element_text(size=14)) +
+  labs(y="Gender category", x="Number of instances", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) +
+  geom_text(aes(label = n), colour = "red", fontface = "bold", hjust = -0.1) %>% 
+  print()
+  
+ggsave("../figures/Gender_total_epitaphs.png", width = 12, height = 12)
+
+                                
+```
+
+```{r}
+epitaph %>% 
+  select(gender) %>% 
+  count(gender, sort=TRUE) %>% 
+  mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
+  mutate(ratio_total = round(ratio_total, digits = 2)) %>% 
+  ggplot(aes(y=fct_rev(gender), x=ratio_total), colour=gender) +
+  geom_col(color="white", fill="lightblue", width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,100)) +
+  theme_minimal() +
+  theme(text = element_text(size=14)) +
+  labs(y="Gender category", x="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) +
+  geom_text(aes(label = ratio_total), colour = "red", fontface = "bold", hjust = -0.1) %>% 
+  print()
+  
+ggsave("../figures/Gender_epitaphs.png", width = 12, height = 12)
+```
+
+```{r}
+epitaph %>% 
+  dplyr::filter(gender == "male"| gender == "M?") -> epitaph_male
+
+epitaph %>% 
+  dplyr::filter(gender == "female"| gender == "F?") -> epitaph_female
+```
+
+```{r}
+gender_true_ratio <- as.data.frame(cbind(male=nrow(epitaph_male), female=nrow(epitaph_female)))
+gender_true_ratio %>% 
+  gather() %>% 
+  rename(gender = key) %>% 
+  rename(n = value) %>% 
+  as.data.frame() -> gender_ratio 
+
+gender_ratio %>% 
+  ggplot(aes(x=gender, y=n)) +
+  geom_col(color="white", fill="green", width=0.8, stat="identity") +
+  theme_minimal() +
+  #theme(text = element_text(size=14)) +
+  labs(x="Gender category", y="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
+  geom_text(aes(label = n, n = ), colour = "black", fontface = "bold", vjust = -0.5) %>% 
+  print()
+
+ggsave("../figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
+  
+```
+
+```{r}
+gender_ratio %>% 
+  mutate(ratio = n/(sum(n))*100) %>%
+  mutate(ratio = round(ratio, digits =2)) %>% 
+  ggplot(aes(x=gender, y=ratio), color=gender) +
+  geom_col(width=0.8, stat="identity") +
+  theme_minimal() +
+  #theme(text = element_text(size=14)) +
+  labs(x="Gender category", y="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
+  geom_text(aes(label = ratio), colour = "black", fontface = "bold", vjust = -0.5) %>% 
+  print()
+
+ggsave("../figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
+```
+
