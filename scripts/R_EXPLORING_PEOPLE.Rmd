@@ -138,41 +138,12 @@ status_counts
 
 ```{r}
 status_counts %>% 
-  #sort(status_counts$combined_clean) %>% 
+  mutate(combined_clean = reorder(combined_clean, n)) %>% 
   ggplot(aes(y=fct_rev(combined_clean), x=n), size = n) +
   geom_point(color="red") +
   labs(x = "Number of instances", y = "Status in EDH", title = "Overview of status references used in EDH dataset", subtitle = "n = 81,476 inscriptions" ) +
     theme_linedraw(base_size = 12) 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## How many inscriptions have ‘Age’ category?
 
@@ -183,12 +154,12 @@ EDH_unnested %>%
 ```
 
 
-What are the unique values for years
+## What are the unique values for years
 ```{r}
 unique(EDH_unnested$`age: years`)
 ```
 
-How many people have their age stated in years
+## How many people have their age stated in years
 ```{r}
 sum(!is.na(EDH_unnested$`age: years`))
 EDH_unnested %>% 
@@ -196,7 +167,7 @@ EDH_unnested %>%
   filter(!is.na(EDH_unnested$`age: years`))
 ```
 
-How many people have their age stated in months
+## How many people have their age stated in months
 ```{r}
 sum(!is.na(EDH_unnested$`age: months`))
 EDH_unnested %>% 
@@ -204,8 +175,7 @@ EDH_unnested %>%
   filter(!is.na(EDH_unnested$`age: months`))
 ```
 
-How many people have their age stated in days
-
+## How many people have their age stated in days
 ```{r}
 sum(!is.na(EDH_unnested$`age: days`))
 EDH_unnested %>% 
@@ -213,7 +183,7 @@ EDH_unnested %>%
   filter(!is.na(EDH_unnested$`age: days`))
 ```
 
-How many people have their age stated in hours
+## How many people have their age stated in hours
 ```{r}
 sum(!is.na(EDH_unnested$`age: hours`))
 EDH_unnested %>% 
@@ -248,6 +218,33 @@ summary(ages$age_months)
 summary(ages$age_days)
 summary(ages$age_hours)
 ```
+
+## Combining all ages (years, months, days, hours) into one column
+
+```{r}
+
+ages <- ages %>% 
+  mutate(months_to_years = age_months / 12) %>% 
+  mutate(days_to_years = age_days / 365) %>% 
+  mutate(hours_to_years = age_hours / (24*365)) %>% 
+  print()
+
+ages$age_total <- ifelse(grepl("\\d+", ages$age_years, ignore.case = T), ages$age_years, 
+                         ifelse(grepl("\\d+", ages$months_to_years, ignore.case = T), ages$age_years + ages$months_to_years, "NA"))
+
+
+
+ages %>% 
+  filter(!is.na(age_years))
+
+
+
+
+```
+
+
+
+
 
 # More complex questions
 
@@ -392,3 +389,10 @@ gender_ratio %>%
 ggsave("../figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
 ```
 
+# Occupation
+## What are the names of unique values in the 'occupation' attribute?
+```{r}
+EDH_unnested %>% 
+  dplyr::filter(occupation == "data available") %>% 
+  select()
+```

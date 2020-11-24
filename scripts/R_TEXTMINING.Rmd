@@ -1,5 +1,5 @@
 ---
-title: "Exploration of the epigraphic text using TidyText approach"
+title: "Exploration of the epigraphic text using Udpipe model"
 author: "Petra Hermankova"
 date: "26/10/2020"
 output:
