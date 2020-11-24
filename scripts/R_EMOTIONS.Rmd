@@ -1,0 +1,242 @@
+---
+title: "Emotions in the epigraphic texts"
+author: "Adela Sobotkova"
+date: "started 24 Nov 2020, updated `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    toc_depth: 2
+    df_print: paged
+---
+
+# Initial setup
+
+Purpose of this script is to explore the emotional loading of the text in the inscriptions with the help of a basic binary emotional lexicon. Quality of the lexicon impacts the results heavily. Here, the 'bi' lexicon is compiled in rather ad hoc manner. Heavier investment in the lexicon construction is desirable. 
+
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE}
+#devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+library(tidyverse)
+library(sdam)
+library(jsonlite)
+library(tidytext)
+```
+
+## Loading data 
+### Sciencedata.dk user with credentials
+Load the dataset, if you have Sciencedata.dk credentials
+
+```{r, echo=FALSE}
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+```{r, loading data}
+resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+```
+
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+### Loading data as anonymous user (no credentials needed)
+
+Please ignore and close the pop-up window asking for username and login. The data will then download itself without login credentials.
+```{r loading anon}
+resp = request("EDH_text_cleaned_2020-10-09.json", path="/public/b6b6afdb969d378b70929e86e58ad975", method="GET")
+```
+
+
+## Prepping data
+Make a list and tibble from the request function
+```{r eval=FALSE}
+list_json <- jsonlite::fromJSON(resp)
+EDH_tibble <- as_tibble(list_json)
+```
+
+Display the first 6 records
+```{r}
+head(EDH_tibble)
+tail(colnames(EDH_tibble), 10)
+
+```
+
+
+# Tidy up the `clean_text_interpretive_word` column
+
+## Tokenizing words, splitting on an empty space
+```{r}
+EDH_tokenized <- EDH_tibble %>% 
+  unnest_tokens(word, clean_text_interpretive_word, token = stringr::str_split, pattern = " ") %>% 
+  drop_na(word) %>%
+  print()
+```
+
+
+## Stopping the most frequent words: nouns and prepositions
+```{r}
+EDH_tokenized %>% 
+  count(word, sort = TRUE) %>% 
+  head(20)
+
+# my own minimal list, for better one , see quanteda package or 
+# https://github.com/aurelberra/stopwords
+stop_wordLT <- tibble(word = c("ab", "ac", "ad", "adhic", "aliqui", "aliquis", "an", "ante", "apud", "at", "atque", "aut", "autem", "cum", "cur", "de", "deinde", "dum", "ego", "enim", "ergo", "es", "est", "et", "etiam", "etsi", "ex", "fio", "haud", "hic", "iam", "idem", "igitur", "ille", "in", "infra", "inter", "interim", "ipse", "is", "ita", "magis", "modo", "mox", "nam", "ne", "nec", "necque", "neque", "nisi", "non", "nos", "o", "ob", "per", "possum", "post", "pro", "quae", "quam", "quare", "qui", "quia", "quicumque", "quidem", "quilibet", "quis", "quisnam", "quisquam", "quisque", "quisquis", "quo", "quoniam", "sed", "si", "sic", "sive", "sub", "sui", "sum", "super", "suus", "tam", "tamen", "trans", "tu", "tum", "ubi", "uel", "uero"))
+
+EDH_stop <- EDH_tokenized %>% 
+  anti_join(stop_wordLT, by = "word")
+EDH_stop %>% 
+  count(word, sort = TRUE) %>% 
+  head(15)
+```
+Now we have eliminated 100,000 instances of prepositions and pronouns and other stopwords.
+
+
+
+## Eliminating numbers
+As we look at the most frequent words, we note some loose 'i' and 'v' letters. These stand for numbers, which are a bit instrusive and can be removed.
+```{r}
+EDH_nonumber <- EDH_stop %>% 
+  anti_join(tibble(word=c("i","ii","iii","iv","v","vi","vii","viii","ix","x")), by = "word")
+```
+Now, we have excluded 30,000 numerals.
+
+
+# Tidytext overview
+## Counting the most common words (without stopwords)
+```{r, tidy=TRUE}
+EDH_stop %>% 
+  count(word, sort = TRUE) %>% 
+  filter(n > 5000) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  print()
+```
+
+## Counting the most common words 
+```{r, tidy=TRUE}
+EDH_tokenized %>% 
+  count(word, sort = TRUE) %>% 
+  filter(n > 5000) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  print()
+```
+
+
+
+# Sentiment analysis
+
+In order to do sentiment analysis, we need lexicons that can associate words with affective states and emotions in the given language. Such lexicons exist for English, so let's first learn about those and then create equivalents in latin.
+
+First, check out the ‘sentiments’ lexicon. From Julia Silge and David Robinson (https://www.tidytextmining.com/sentiment.html):
+
+“The three general-purpose lexicons are
+
+  -  AFINN from Finn Årup Nielsen,
+  -  bing from Bing Liu and collaborators, and
+  -  nrc from Saif Mohammad and Peter Turney
+
+All three of these lexicons are based on unigrams, i.e., single words. These lexicons contain many English words and the words are assigned scores for positive/negative sentiment, and also possibly emotions like joy, anger, sadness, and so forth. The nrc lexicon categorizes words in a binary fashion (“yes”/“no”) into categories of positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, and trust. The bing lexicon categorizes words in a binary fashion into positive and negative categories. The AFINN lexicon assigns words with a score that runs between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment. All of this information is tabulated in the sentiments dataset, and tidytext provides a function get_sentiments() to get specific sentiment lexicons without the columns that are not used in that lexicon."
+
+Let's explore the sentiment lexicons. "bing" included, other lexicons ("afinn", "nrc", "loughran") you'll be prompted to download.
+
+**WARNING:** These collections include very offensive words. I urge you to not look at them in class.
+
+"afinn": Words ranked from -5 (very negative) to +5 (very positive)
+```{r}
+get_sentiments(lexicon = "afinn")
+# Note: may be prompted to download (yes)
+
+# Let's look at the pretty positive words:
+afinn_pos <- get_sentiments("afinn") %>% 
+  filter(value %in% c(3,4,5))
+
+# Do not look at negative words in class. 
+afinn_pos
+```
+
+bing: binary, "positive" or "negative"
+```{r}
+get_sentiments(lexicon = "bing")
+```
+
+nrc:https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm
+Includes bins for 8 emotions (anger, anticipation, disgust, fear, joy, sadness, surprise, trust) and positive / negative. 
+
+**Citation for NRC lexicon**: Crowdsourcing a Word-Emotion Association Lexicon, Saif Mohammad and Peter Turney, Computational Intelligence, 29 (3), 436-465, 2013.
+
+Now nrc:
+```{r}
+get_sentiments(lexicon = "nrc")
+```
+
+## Creating a latin sentiment lexicon from scratch 
+Now that we see how lexicons work, let's start with a binary 'bing' lexicon for Latin, extracted from  https://www.kaggle.com/rtatmagn/sentiment-lexicons-for-81-languages
+
+```{r}
+pos <- data.frame(read.delim("C:/Users/au616760/Downloads/Semanticarchive/sentiment-lexicons/positive_words_la.txt",header = FALSE, sep = "\n"), sentiment="positive" )
+neg <- data.frame(read.delim("C:/Users/au616760/Downloads/Semanticarchive/sentiment-lexicons/negative_words_la.txt",header = FALSE, sep = "\n"), sentiment="negative" )
+bi <- rbind(pos,neg)
+
+colnames(bi)[1] <- "word"
+head(bi)
+```
+
+
+## Sentiment analysis with latin texts 
+Yes, our lexicon is horrible and ad hoc, but we can use it to demonstrate the mechanism of semantic analysis. Better lexicon will simply produce better results. 
+
+First, bind words in `EDH_stop` to `bi` lexicon:
+```{r}
+EDH_bi <- EDH_nonumber %>% 
+  inner_join(bi, by = "word") %>% 
+  select(word, sentiment, findspot_ancient, clean_text_interpretive_sentence, geography, social_economic_legal_history)
+
+tail(colnames(EDH_bi), 10)
+
+EDH_bi %>%
+  count(word,sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>% 
+  top_n(5) %>% 
+  ungroup()
+
+```
+
+So, the result is underwhelming, as 'dies' and 'die' (Latin for days) is wrongly marked as negative, probably because these are English terms. 'Severus' is also heavily suspect. And why is 'cura' negative? The positive terms are plausible, but the negative ones seem a mess.
+
+The lexicon is far from perfect, but at least we see the basic functionality. 
+
+Now let's try some visualisation. 
+
+```{r}
+EDH_bi_n <- EDH_bi %>% count(sentiment, sort = TRUE)
+ggplot(data = EDH_bi_n, aes(x = sentiment, y = n)) +
+  geom_col(fill = c("red", "blue") )
+
+```
+
+O mrtvych jen dobre. Ok we get it. Given that many of the negative terms are miscoded (as per the 'dies' and 'die' examples above), the positivity is probably greater than shown in the barplot. 
+
+
+Let's look at more terms and compare the most frequent terms on both positive and negative side.
+
+```{r}
+EDH_bi_n10 <- EDH_bi %>%
+  count(word,sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>% 
+  top_n(10) %>% 
+  ungroup()
+
+ggplot(data = EDH_bi_n10, 
+       aes(x = reorder(word,n), y = n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, ncol = 2, scales = "free") +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "Word", y = "count")
+```
+
