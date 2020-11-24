@@ -26,8 +26,9 @@ library(leaflet)
 library(tidytext)
 ```
 
-## Loading data
-1. Load the dataset, if you have Sciencedata.dk credentials
+## Loading data 
+### Option 1 - with sciencedata.dk credentials
+Load the dataset, if you have Sciencedata.dk credentials
 
 ```{r, echo=FALSE}
 mycred_secret<- readLines("~/mysecret.txt")
@@ -40,6 +41,15 @@ resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk
 ```{r, echo=FALSE}
 remove(mycred_secret)
 ```
+
+### Loading data as anonymous user (no credentials needed)
+
+Please ignore and close the pop-up window asking for username and login. The data will then download itself without login credentials.
+```{r}
+resp = request("EDH_text_cleaned_2020-10-09.json", path="/public/b6b6afdb969d378b70929e86e58ad975", method="GET")
+```
+
+#
 
 2. Make a list and tibble from the request function
 ```{r}
@@ -63,9 +73,23 @@ EDH_tokenized <- EDH_tibble %>%
   print()
 ```
 
-## Counting the most common words 
-```{r, tidy=TRUE}
+## Remove pronouns and prepositions
+```{r}
 EDH_tokenized %>% 
+  count(word, sort = TRUE) %>% 
+  head(20)
+
+# my own minimal list, for better one , see quanteda package or 
+# https://github.com/aurelberra/stopwords
+stop_wordLT <- tibble(word = c("ab", "ac", "ad", "adhic", "aliqui", "aliquis", "an", "ante", "apud", "at", "atque", "aut", "autem", "cum", "cur", "de", "deinde", "dum", "ego", "enim", "ergo", "es", "est", "et", "etiam", "etsi", "ex", "fio", "haud", "hic", "iam", "idem", "igitur", "ille", "in", "infra", "inter", "interim", "ipse", "is", "ita", "magis", "modo", "mox", "nam", "ne", "nec", "necque", "neque", "nisi", "non", "nos", "o", "ob", "per", "possum", "post", "pro", "quae", "quam", "quare", "qui", "quia", "quicumque", "quidem", "quilibet", "quis", "quisnam", "quisquam", "quisque", "quisquis", "quo", "quoniam", "sed", "si", "sic", "sive", "sub", "sui", "sum", "super", "suus", "tam", "tamen", "trans", "tu", "tum", "ubi", "uel", "uero"))
+
+EDH_stop <- EDH_tokenized %>% 
+  anti_join(stop_wordLT, by = "word")
+```
+
+## Counting the most common words (without stopwords)
+```{r, tidy=TRUE}
+EDH_stop %>% 
   count(word, sort = TRUE) %>% 
   filter(n > 5000) %>% 
   mutate(word = reorder(word, n)) %>% 
