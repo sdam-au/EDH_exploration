@@ -139,10 +139,14 @@ status_counts
 ```{r}
 status_counts %>% 
   mutate(combined_clean = reorder(combined_clean, n)) %>% 
-  ggplot(aes(y=fct_rev(combined_clean), x=n), size = n) +
-  geom_point(color="red") +
-  labs(x = "Number of instances", y = "Status in EDH", title = "Overview of status references used in EDH dataset", subtitle = "n = 81,476 inscriptions" ) +
-    theme_linedraw(base_size = 12) 
+  ggplot(aes(y=combined_clean, x=n), size = n) +
+  geom_col(fill= "magenta") +
+  labs(x = "Number of instances", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = "n = 81,476 inscriptions" ) +
+  geom_label(aes(label= n), size = 3) +
+  theme_linedraw(base_size = 12) %>% 
+  print()
+
+ggsave("../figures/Status_overview.png", width = 12, height = 8) 
 ```
 
 ## How many inscriptions have ‘Age’ category?
@@ -226,40 +230,58 @@ summary(ages$age_hours)
 ages <- ages %>% 
   mutate(months_to_years = age_months / 12) %>% 
   mutate(days_to_years = age_days / 365) %>% 
-  mutate(hours_to_years = age_hours / (24*365)) %>% 
-  print()
-
-ages$age_total <- ifelse(grepl("\\d+", ages$age_years, ignore.case = T), ages$age_years, 
-                         ifelse(grepl("\\d+", ages$months_to_years, ignore.case = T), ages$age_years + ages$months_to_years, "NA"))
+  mutate(hours_to_years = age_hours / (24*365))
 
 
+ages <- ages %>%
+  replace_na(list(months_to_years = 0, days_to_years = 0, hours_to_years = 0)) %>% 
+  mutate(total_age = age_years + months_to_years + days_to_years + hours_to_years) # %>% 
+  select(-ends_with("to_years"))
 
-ages %>% 
-  filter(!is.na(age_years))
+ages
 
-
-
+ages$test<- ifelse(filter(ages$ages_years == 0), ages$total_age, NA)
 
 ```
 
+```{r}
+summary(ages$total_age)
+```
+```{r}
+table(ages$total_age)
+```
 
+## Combine the total age with the rest of the dataset
 
+```{r}
 
+EDH_age<- EDH_unnested %>% 
+  mutate(age_years = as.numeric(str_extract(EDH_unnested$'age: years', pattern = "[:digit:]+"))) %>% 
+  mutate(age_months = as.numeric(str_extract(EDH_unnested$'age: months', pattern = "[:digit:]+"))) %>%
+  mutate(age_days = as.numeric(str_extract(EDH_unnested$'age: days', pattern = "[:digit:]+"))) %>%
+  mutate(age_hours = as.numeric(str_extract(EDH_unnested$'age: hours', pattern = "[:digit:]+"))) %>% 
+  mutate(months_to_years = age_months / 12) %>% 
+  mutate(days_to_years = age_days / 365) %>% 
+  mutate(hours_to_years = age_hours / (24*365)) %>% 
+  replace_na(list(months_to_years = 0, days_to_years = 0, hours_to_years = 0)) %>% 
+  mutate(total_age = age_years + months_to_years + days_to_years + hours_to_years) %>% 
+  select(-ends_with("to_years")) 
+
+```
 
 # More complex questions
 
 ## What is the age of people on funerary inscriptions by province
 ```{r}
-EDH_unnested %>% 
+EDH_age %>% 
   filter(type_of_inscription_clean == "epitaph") -> epitaph
 ```
 
 ```{r, fig.height=8}
 epitaph %>% 
-  select(`age: years`, province_label_clean) %>% 
-  mutate(age_years = as.numeric(str_extract(epitaph$'age: years', pattern = "[:digit:]+"))) %>% 
-  count(age_years, province_label_clean) %>% 
-  ggplot(aes(x=age_years, y= fct_rev(province_label_clean))) + geom_point(alpha=0.5, color="darkblue") +
+  select(total_age, province_label_clean) %>% 
+  count(total_age, province_label_clean, sort=TRUE) %>% 
+  ggplot(aes(x=total_age, y= fct_rev(province_label_clean))) + geom_point(alpha=0.5, color="darkblue") +
   theme_minimal()
 dir.create("../figures")
 ggsave("../figures/Age_years_provinces.png", width = 8, height = 8) 
@@ -269,56 +291,46 @@ ggsave("../figures/Age_years_provinces.png", width = 8, height = 8)
 ## What is the average age of people on funerary inscriptions by province
 
 ```{r}
-epitaph %>% 
-  select(`age: years`, province_label_clean) %>% 
-  mutate(age_years = as.numeric(str_extract(epitaph$'age: years', pattern = "[:digit:]+"))) -> epitaph 
-epitaph 
-```
-
-```{r}
-
-# frequency of with which people state the age in years by provinces
-epitaph %>% 
-  na.omit(age_years) %>% 
-  count(province_label_clean, sort = TRUE) 
-
-```
-
-```{r}
 # install.packages("psych")
 library(psych)
 
-describeBy(epitaph$age_years, group = epitaph$province_label_clean, mat = TRUE, digits = 2) -> age_provinces
+describeBy(epitaph$total_age, group = epitaph$province_label_clean, mat = TRUE, digits = 2) -> age_provinces
 head(age_provinces)
+```
+```{r}
+View(age_provinces)
 ```
 
 ```{r, fig.height=12}
 age_provinces %>% 
-  select(group1, mean) %>% 
-  ggplot(aes(y=fct_rev(group1), x=mean)) +
-  geom_col(color="white", fill="blue", width=1, stat="identity") +
-  coord_cartesian(xlim=c(0,80)) +
+  filter(n>0) %>% 
+  mutate(group1 = reorder(group1, mean)) %>%  
+  ggplot(aes(y=group1, x=mean)) +
+  geom_col(color="white", fill="blue", width=0.8, stat="identity") +
+  #coord_cartesian(xlim=c(0,80)) +
   theme_minimal() +
-  theme(text = element_text(size=14)) +
-  labs(y="Roman province", x="Years", title= "Average age of people on inscriptions in the EDH database", subtitle = "n= 7993 people" ) +
+  theme(text = element_text(size=16)) +
+  labs(y="Roman province", x="Years", title= "Average age of people from inscriptions in the EDH database by province", subtitle = "n= 7993 people")+ 
+  geom_label(aes(label= mean)) +
+  geom_text(aes(label = mean), colour = "black", fontface = "bold", hjust = -0.1) %>% 
+  print()
   
 ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
-
 ```
 
 ## What is the gender ratio of people on funerary inscriptions by province
-
 ```{r}
 epitaph %>% 
-  select(gender) %>% 
   count(gender, sort=TRUE) %>% 
   mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
-  ggplot(aes(y=fct_rev(gender), x=n)) +
-  geom_col(color="white", fill="yellow", width=0.8, stat="identity") +
+  mutate(ratio_total = reorder(ratio_total, n)) %>%
+  ggplot(aes(y=gender, x=n)) +
+  geom_col(color="white", fill="orange", width=0.8, stat="identity") +
   coord_cartesian(xlim=c(0,30000)) +
   theme_minimal() +
   theme(text = element_text(size=14)) +
   labs(y="Gender category", x="Number of instances", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) +
+  geom_label(aes(label= n)) +
   geom_text(aes(label = n), colour = "red", fontface = "bold", hjust = -0.1) %>% 
   print()
   
@@ -329,17 +341,18 @@ ggsave("../figures/Gender_total_epitaphs.png", width = 12, height = 12)
 
 ```{r}
 epitaph %>% 
-  select(gender) %>% 
   count(gender, sort=TRUE) %>% 
   mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
   mutate(ratio_total = round(ratio_total, digits = 2)) %>% 
+  filter(ratio_total >0.5) %>% 
   ggplot(aes(y=fct_rev(gender), x=ratio_total), colour=gender) +
   geom_col(color="white", fill="lightblue", width=0.8, stat="identity") +
   coord_cartesian(xlim=c(0,100)) +
   theme_minimal() +
   theme(text = element_text(size=14)) +
   labs(y="Gender category", x="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) +
-  geom_text(aes(label = ratio_total), colour = "red", fontface = "bold", hjust = -0.1) %>% 
+  geom_label(aes(label= ratio_total)) +
+  geom_text(aes(label = ratio_total), colour = "red", fontface = "bold", vjust = -1) %>% 
   print()
   
 ggsave("../figures/Gender_epitaphs.png", width = 12, height = 12)
@@ -363,11 +376,12 @@ gender_true_ratio %>%
 
 gender_ratio %>% 
   ggplot(aes(x=gender, y=n)) +
-  geom_col(color="white", fill="green", width=0.8, stat="identity") +
+  geom_col(color="white", fill="orange", width=0.5, stat="identity") +
   theme_minimal() +
-  #theme(text = element_text(size=14)) +
-  labs(x="Gender category", y="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
-  geom_text(aes(label = n, n = ), colour = "black", fontface = "bold", vjust = -0.5) %>% 
+  theme(text = element_text(size=14)) +
+  labs(x="Gender category", y="Number of people", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
+  geom_label(aes(label= n)) +
+  geom_text(aes(label = n), colour = "black", fontface = "bold", vjust = -0.5) %>% 
   print()
 
 ggsave("../figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
@@ -379,10 +393,11 @@ gender_ratio %>%
   mutate(ratio = n/(sum(n))*100) %>%
   mutate(ratio = round(ratio, digits =2)) %>% 
   ggplot(aes(x=gender, y=ratio), color=gender) +
-  geom_col(width=0.8, stat="identity") +
+  geom_col(width=0.5, stat="identity", fill = "brown") +
   theme_minimal() +
-  #theme(text = element_text(size=14)) +
+  theme(text = element_text(size=14)) +
   labs(x="Gender category", y="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
+  geom_label(aes(label= ratio)) + 
   geom_text(aes(label = ratio), colour = "black", fontface = "bold", vjust = -0.5) %>% 
   print()
 
