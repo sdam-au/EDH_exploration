@@ -238,10 +238,6 @@ ages <- ages %>%
   mutate(total_age = age_years + months_to_years + days_to_years + hours_to_years) # %>% 
   select(-ends_with("to_years"))
 
-ages
-
-ages$test<- ifelse(filter(ages$ages_years == 0), ages$total_age, NA)
-
 ```
 
 ```{r}
@@ -310,13 +306,32 @@ age_provinces %>%
   #coord_cartesian(xlim=c(0,80)) +
   theme_minimal() +
   theme(text = element_text(size=16)) +
-  labs(y="Roman province", x="Years", title= "Average age of people from inscriptions in the EDH database by province", subtitle = "n= 7993 people")+ 
+  labs(y="Roman province", x="Years", title= "Average age of people on inscriptions in the EDH database by province", subtitle = "n= 7993 people")+ 
   geom_label(aes(label= mean)) +
   geom_text(aes(label = mean), colour = "black", fontface = "bold", hjust = -0.1) %>% 
   print()
   
 ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
 ```
+
+
+```{r, fig.height=12}
+age_provinces %>% 
+  filter(n>0) %>% 
+  mutate(group1 = reorder(group1, n)) %>%  
+  ggplot(aes(y=group1, x=n)) +
+  geom_col(color="white", fill="purple", width=0.8, stat="identity") +
+  #coord_cartesian(xlim=c(0,80)) +
+  theme_minimal() +
+  theme(text = element_text(size=16)) +
+  labs(y="Roman province", x="n", title= "Instances of age information in the EDH database by province", subtitle = "n= 7993 people")+ 
+  geom_label(aes(label= n),hjust = -0.4) +
+  geom_text(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4) %>% 
+  print()
+
+ggsave("../figures/Age_info_provinces.png", width = 12, height = 12) 
+```
+
 
 ## What is the gender ratio of people on funerary inscriptions by province
 ```{r}
@@ -336,7 +351,6 @@ epitaph %>%
   
 ggsave("../figures/Gender_total_epitaphs.png", width = 12, height = 12)
 
-                                
 ```
 
 ```{r}
