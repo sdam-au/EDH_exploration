@@ -136,14 +136,16 @@ status %>%
 status_counts 
 ```
 
-```{r}
+```{r, fig.width=12}
 status_counts %>% 
   mutate(combined_clean = reorder(combined_clean, n)) %>% 
-  ggplot(aes(y=combined_clean, x=n), size = n) +
-  geom_col(fill= "magenta") +
-  labs(x = "Number of instances", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = "n = 81,476 inscriptions" ) +
-  geom_label(aes(label= n), size = 3) +
-  theme_linedraw(base_size = 12) %>% 
+  ggplot(aes(y=combined_clean, x=n, fill=combined_clean)) +
+  geom_col(width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,10000)) +
+  labs(x = "Number of instances", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(EDH_tibble), "inscriptions"))) +
+  geom_label(aes(label= n)) +
+  theme_linedraw(base_size = 12) +
+  theme_minimal() %>% 
   print()
 
 ggsave("../figures/Status_overview.png", width = 12, height = 8) 
@@ -333,6 +335,37 @@ ggsave("../figures/Age_info_provinces.png", width = 12, height = 12)
 ```
 
 
+
+```{r}
+EDH_age<- EDH_age %>%
+  mutate(agegroup = case_when(total_age < 3 ~  "0-3",
+                              total_age < 15 ~ "3-15",
+                              total_age < 30 ~ "15-30",
+                              total_age < 40 ~ "30-40",
+                              total_age < 60 ~ "40-60",
+                              total_age > 60 ~ "over 60"))
+
+EDH_age$agegroup <- factor(EDH_age$agegroup, levels = c("0-3", "3-15","15-30", "30-40", "40-60","over 60"))  
+```
+
+```{r}
+
+
+EDH_age %>% 
+  filter(agegroup != "NA") %>%
+  #count(agegroup, sort = TRUE) %>%
+  #mutate(agegroup_sorted = reorder(agegroup, n)) %>% 
+  ggplot() +
+  geom_bar(mapping = aes(x = agegroup, fill = agegroup))+
+  labs(x = "Age group", y = "Number of instances", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))
+  
+ggsave("../figures/Age_groups_epitaphs.png", width = 12, height = 8) 
+```
+
+
+
+
+
 ## What is the gender ratio of people on funerary inscriptions by province
 ```{r}
 epitaph %>% 
@@ -340,7 +373,7 @@ epitaph %>%
   mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
   mutate(ratio_total = reorder(ratio_total, n)) %>%
   ggplot(aes(y=gender, x=n)) +
-  geom_col(color="white", fill="orange", width=0.8, stat="identity") +
+  geom_col(color="white", fill="orange", width=0.8, stat="identity", fill=gender) +
   coord_cartesian(xlim=c(0,30000)) +
   theme_minimal() +
   theme(text = element_text(size=14)) +
@@ -354,22 +387,24 @@ ggsave("../figures/Gender_total_epitaphs.png", width = 12, height = 12)
 ```
 
 ```{r}
+
+
 epitaph %>% 
   count(gender, sort=TRUE) %>% 
   mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
   mutate(ratio_total = round(ratio_total, digits = 2)) %>% 
   filter(ratio_total >0.5) %>% 
-  ggplot(aes(y=fct_rev(gender), x=ratio_total), colour=gender) +
-  geom_col(color="white", fill="lightblue", width=0.8, stat="identity") +
-  coord_cartesian(xlim=c(0,100)) +
+  ggplot(aes(y=gender, x=ratio_total, fill=gender)) +
+  geom_bar(width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,60)) +
   theme_minimal() +
-  theme(text = element_text(size=14)) +
-  labs(y="Gender category", x="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) +
-  geom_label(aes(label= ratio_total)) +
-  geom_text(aes(label = ratio_total), colour = "red", fontface = "bold", vjust = -1) %>% 
+  theme(text = element_text(size=16)) +
+  labs(y="Gender category", x="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = ggtitle(paste("n =", nrow(epitaph), "inscriptions" ))) +
+  geom_label(aes(label= ratio_total), hjust = -0.1) +
+  geom_text(aes(label = ratio_total)) %>% 
   print()
-  
-ggsave("../figures/Gender_epitaphs.png", width = 12, height = 12)
+
+ggsave("../figures/Gender_epitaphs.png", width = 8, height = 8)
 ```
 
 ```{r}
