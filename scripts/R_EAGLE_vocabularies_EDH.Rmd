@@ -70,7 +70,7 @@ The aim of this script is to analyse the usage of EAGLE vocabularies in the EDH 
 
 ```{r, select attributes}
 EDH_eagle<- EDH_tibble %>% 
-  select(layout_execution, layout_execution_text, support_objecttype, support_objecttype_text, support_material, support_material_text, support_decoration, keywords_term, keywords_term_text)
+  select(layout_execution, layout_execution_text, support_objecttype, support_objecttype_text, support_material, support_material_text, support_decoration, keywords_term, keywords_term_text, type_of_inscription_clean)
 
 EDH_eagle
 ```
@@ -274,7 +274,7 @@ Example of record in XML:
 ### Display the first six values for illustration
 ```{r}
 EDH_eagle %>% 
-  select(keywords_term, keywords_term_text) %>%
+  select(keywords_term, keywords_term_text, type_of_inscription_clean) %>%
   head()
 ```
 
@@ -282,8 +282,17 @@ EDH_eagle %>%
 ```{r}
 EDH_eagle %>% 
   select(keywords_term, keywords_term_text) %>% 
-  count(keywords_term, sort=TRUE)
+  count(keywords_term, keywords_term_text, sort=TRUE) -> insc_type_overview_xml
+
+EDH_eagle %>% 
+  select(keywords_term, keywords_term_text,type_of_inscription_clean) %>% 
+  count(keywords_term, keywords_term_text, type_of_inscription_clean, sort=TRUE) -> insc_type_overview_all
 ```
+
+```{r}
+write_csv(insc_type_overview_xml, "./EDH_inscription_type_eagle_vocab_xml.csv", col_names = TRUE)
+```
+
 
 ### Total number of unique vocabularies
 ```{r}
