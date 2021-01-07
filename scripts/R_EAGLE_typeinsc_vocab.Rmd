@@ -1,0 +1,51 @@
+---
+title: "Iscription Type in Eagle vocabularies"
+author: "Petra Hermankova"
+date: "07/01/2021"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    smooth_scroll: true
+    toc_depth: 4
+    df_print: paged
+    highlight: monochrome
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+# Load data from Pietro
+```{r}
+all<- read.csv("data/queryResults.csv", sep = ",")
+```
+
+## Filter only for 'typeins'
+```{r}
+typeins <- all %>% 
+  dplyr::filter(grepl("typeins", concept))
+typeins
+```
+
+## How many unique values of 'typeins' there are?
+```{r}
+length(unique(typeins$concept))
+```
+
+## Subset only the unique values of 'typeins'
+```{r}
+unique_typeins <- typeins %>% 
+  select(concept, prefLabel, altLabel) %>% 
+  distinct(concept, prefLabel)
+unique_typeins
+```
+
+# Export as CSV file
+```{r}
+write_csv(unique_typeins, "data/EAGLE_typeins_unique.csv")
+```
+
+
