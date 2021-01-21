@@ -35,7 +35,7 @@ mycred_secret<- readLines("~/mysecret.txt")
 ```
 
 ```{r, loading data}
-resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+resp = request("EDH_text_cleaned_2021-01-21.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
 ```
 
 ```{r, echo=FALSE}
@@ -63,34 +63,29 @@ Models available at `Straka, Milan and Straková, Jana, 2019, Universal Dependen
 ```{r}
 #dl <- udpipe_download_model(language = "ancient_greek")
 
-#dl <- udpipe_download_model(language = "latin", model_dir = "../data/") # latin-perseus model
-dl <- udpipe_download_model(language = "latin-proiel", model_dir = "../data/") # latin-proiel model
 
-#dl <- udpipe_download_model(language = "latin-ittb", model_dir = "../data/") # latin-ittb model
+dl <- udpipe_download_model(udpipe_model_repo = "jwijffels/udpipe.models.ud.2.5" , language = "latin-proiel", model_dir = "../data/") # latin-proiel model
 
-str(dl)
+dl2 <- udpipe_download_model(udpipe_model_repo = "jwijffels/udpipe.models.ud.2.5", language = "latin-perseus", model_dir = "../data/") # latin-perseus model
+
 ```
 
 ## Give the full path to the model and load it to R
 ```{r}
 # udmodel_anc_greek <- udpipe_load_model(file = "ancient_greek-perseus-ud-2.4-190531.udpipe")
 
-#udmodel_latin <- udpipe_load_model(file = "../data/latin-perseus-ud-2.4-190531.udpipe")
-udmodel_latin <- udpipe_load_model(file = "../data/latin-proiel-ud-2.4-190531.udpipe")
-#udmodel_latin <- udpipe_load_model(file = "../data/latin-ittb-ud-2.4-190531.udpipe")
+# perseus
+udmodel_latin <- udpipe_load_model(file = "../data/latin-perseus-ud-2.5-191206.udpipe")
+
+# proiel
+udmodel_latin <- udpipe_load_model(file = "../data/latin-proiel-ud-2.5-191206.udpipe")
+
 ```
 
 ## Anotate the text using UDpipe
 ```{r}
-#udpipe_text <- as.data.frame(udpipe_annotate(udmodel_anc_greek, x = EDH_tibble$clean_text_interpretive_word))
 udpipe_text <- as.data.frame(udpipe_annotate(udmodel_latin, x = EDH_tibble$clean_text_interpretive_word))
 str(udpipe_text)
-```
-
-```{r}
-#latin_perseus<- udpipe_text
-#latin_proiel<- udpipe_text
-#latin_ittb<- udpipe_text
 ```
 
 
@@ -172,11 +167,22 @@ EDH_selection <- full_appended %>%
 ```
 
 
-# Saving subset to Sciencedata
+# Saving to Sciencedata
 ```{r}
+# saving the full dataset
+# EDH_lemmatized_json <- jsonlite::toJSON(full_appended, auto_unbox = TRUE)
+
+# saving subset of the dataset
 EDH_lemmatized_json <- jsonlite::toJSON(EDH_selection, auto_unbox = TRUE)
-write(EDH_lemmatized_json, file="../data/EDH_text_lemmatized_2021-01-12.json")
-request("../data/EDH_text_lemmatized_2021-01-12.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public",
+
+# perseus
+write(EDH_lemmatized_json, file="../data/EDH_text_lemmatized_perseus_2021-01-21.json")
+request("../data/EDH_text_lemmatized_perseus_2021-01-21.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public",
+        method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
+
+# proiel
+write(EDH_lemmatized_json, file="../data/EDH_text_lemmatized_proeiel_2021-01-21.json")
+request("../data/EDH_text_lemmatized_perseus_2021-01-21.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public",
         method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
 ```
 
@@ -185,8 +191,6 @@ request("../data/EDH_text_lemmatized_2021-01-12.json", path="/sharingout/648597@
 file.remove("./EDH_text_lemmatized_2021-01-11.json")
 remove(mycred_secret)
 ```
-
-
 
 
 

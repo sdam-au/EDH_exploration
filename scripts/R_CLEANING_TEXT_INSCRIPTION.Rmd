@@ -493,6 +493,31 @@ arabic_numerals <- c("[0-9]+", "")
 unclosed_brackets <- c("[\\[|\\{|\\(|\\)|\\}|\\]]", "")
 ```
 
+### 3.21 Latin Enclitics
+
+**Aim:** All instances of Latin eclitics -que will be separated from the word by space.
+
+* Example before cleaning: ```libertatisque```
+* Example after cleaning: ```libertatis```
+
+```{r}
+latin_que <- c("(\\w+)(que)\\b", "\\1 \\2")
+```
+
+### 3.22 Roman numerals + vir
+
+**Aim:** All instances of Roman numerals preceeding word 'vir' will be separated from the word by space.
+
+* Example before cleaning: ```IIIIviribus```
+* Example after cleaning: ```IIII viribus```
+
+```{r}
+latin_vir <- c("([I|V|X])(vir*)", "\\1 \\2")
+```
+
+
+
+
 ## Building cleaning functions for specific datasets
 
 When we have established the individual buidling blocks, we can put them together in the right sequence and build a cleaning function in R for conservative and interpretive models.
@@ -522,6 +547,8 @@ cleaning_conservative_edh <- function(epigraphic_dataset){
   clean_text <- gsub(pattern=uncertainty_symbols[1], replacement=uncertainty_symbols[2], x=clean_text, perl=TRUE)
   clean_text <- gsub(pattern=uncertainty_symbols[1], replacement=uncertainty_symbols[2], x=clean_text, perl=TRUE)
   clean_text <- gsub(pattern=end_line[1], replacement=end_line[2], x=clean_text, perl=TRUE)
+  clean_text <- gsub(pattern=latin_que[1], replacement=latin_que[2], x=clean_text, perl=TRUE)
+  clean_text <- gsub(pattern=latin_vir[1], replacement=latin_vir[2], x=clean_text, perl=TRUE)
   clean_text <- gsub(pattern=extra_blank[1], replacement=extra_blank[2], x=clean_text, perl=TRUE)
   clean_text <- gsub(pattern=arabic_numerals[1], replacement=arabic_numerals[2], x=clean_text, perl=TRUE)
   clean_text <- gsub(pattern=unclosed_brackets[1], replacement=unclosed_brackets[2], x=clean_text, perl=TRUE)
@@ -580,6 +607,8 @@ cleaning_interpretive_word_edh <- function(epigraphic_dataset){
    clean_text <- gsub(pattern=superscript_numbers[1], replacement=superscript_numbers[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=epigraphic_symbols[1], replacement=epigraphic_symbols[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=uncertainty_symbols[1], replacement=uncertainty_symbols[2], x=clean_text, perl=TRUE)
+   clean_text <- gsub(pattern=latin_que[1], replacement=latin_que[2], x=clean_text, perl=TRUE)
+   clean_text <- gsub(pattern=latin_vir[1], replacement=latin_vir[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=end_line[1], replacement=end_line[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=extra_blank[1], replacement=extra_blank[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=arabic_numerals[1], replacement=arabic_numerals[2], x=clean_text, perl=TRUE)
@@ -635,6 +664,8 @@ cleaning_interpretive_sentence_edh <- function(epigraphic_dataset){
    clean_text <- gsub(pattern=superscript_numbers[1], replacement=superscript_numbers[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=epigraphic_symbols[1], replacement=epigraphic_symbols[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=uncertainty_symbols[1], replacement=uncertainty_symbols[2], x=clean_text, perl=TRUE)
+   clean_text <- gsub(pattern=latin_que[1], replacement=latin_que[2], x=clean_text, perl=TRUE)
+   clean_text <- gsub(pattern=latin_vir[1], replacement=latin_vir[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=end_line[1], replacement=end_line[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=extra_blank[1], replacement=extra_blank[2], x=clean_text, perl=TRUE)
    clean_text <- gsub(pattern=arabic_numerals[1], replacement=arabic_numerals[2], x=clean_text, perl=TRUE)
@@ -672,12 +703,17 @@ EDH_clean <- EDH_clean %>%
   mutate(clean_text_interpretive_sentence = cleaning_interpretive_sentence_edh(EDH_clean$transcription))
 ```
 
+
+
+
+
+
 # Saving to Sciencedata
 ```{r}
-EDH_cleaned_json <- jsonlite::toJSON(EDH_clean)
+EDH_cleaned_json <- jsonlite::toJSON(EDH_clean, auto_unbox = TRUE)
 
-write(EDH_cleaned_json, file="EDH_text_cleaned_2020-10-09.json")
-request("EDH_text_cleaned_2020-10-09.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public",
+write(EDH_cleaned_json, file="EDH_text_cleaned_2021-01-21.json")
+request("EDH_text_cleaned_2021-01-21.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public",
         method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
 ```
 
