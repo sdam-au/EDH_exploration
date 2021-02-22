@@ -35,7 +35,7 @@ mycred_secret<- readLines("~/mysecret.txt")
 ```
 
 ```{r, loading data}
-resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+resp = request("EDH_text_cleaned_2021-01-21.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
 ```
 
 ```{r, echo=FALSE}
@@ -61,12 +61,21 @@ head(EDH_tibble)
 nrow(EDH_tibble)
 ```
 
+
 ```{r}
 # In June 2020 there were 80270 inscriptions. How many inscriptions there are now in total? What is the increse?
 total<- nrow(EDH_tibble)
 total
 total - 80270
 ```
+
+## Attributes
+
+```{r}
+names(EDH_tibble)
+```
+
+
 
 ## Total number of inscriptions by language
 ```{r}
@@ -103,20 +112,46 @@ total-sum(str_count(location$coordinates, "list()"))
 (total-sum(str_count(location$coordinates, "list()")))/(total/100)
 
 ```
-#### Ancient findspot and the precision of coordinates - NOT FINISHED, Petra will need to return to this
+
+
+
+#### Ancient findspot and the precision of coordinates
 
 ```{r}
-location %>% 
-  select(coordinates, findspot_ancient_clean, findspot_ancient_certainty) %>% 
-  separate(col = coordinates, into = c("latitude", "longitude"), sep = ",") 
+location <- location %>% 
+  separate(col = coordinates, into = c("latitude", "longitude"), sep = ",") %>% 
+  mutate(latitude = str_extract(latitude, "[-]*\\d{1,2}\\.\\d+")) %>% 
+  mutate(longitude = str_extract(longitude, "[-]*\\d{1,2}\\.\\d+"))
 ```
 
 ```{r}
-# providing a test sample
-location_sample<- head(location)
-saveRDS(location_sample, file = "location_sample.rds")
+decimalplaces<-function(x) {
+  x_str <- toString(x)
+  x_str<- str_split(x_str, "\\.")
+  nchar(x_str[[1]][2])
+}
 
-readRDS(file = "location_sample.rds")
+### latitude
+
+lat_df<- as.data.frame(location$latitude) %>%  
+  mutate(decimals = unlist(map(location$latitude, decimalplaces)))
+
+lat_df_count<- lat_df %>% 
+  count(decimals, sort = T) %>% 
+  mutate(percent = n/(sum(n)/100))
+
+lat_df_count
+
+### longitude
+
+long_df<- as.data.frame(location$longitude) %>%  
+  mutate(decimals = unlist(map(location$longitude, decimalplaces)))
+
+long_df_count<- long_df %>% 
+  count(decimals, sort = T) %>% 
+  mutate(percent = n/(sum(n)/100))
+
+long_df_count
 ```
 
 ### Known ancient findspot / `ancient_findspot_clean` attribute

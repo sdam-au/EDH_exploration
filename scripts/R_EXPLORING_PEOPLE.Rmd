@@ -78,6 +78,10 @@ Specific case (gender composition)
 1. Ratio of men/women on different types of inscriptions (attribue 'type_of_inscription_clean')
 
 ```{r}
+str(EDH_tibble$people)
+```
+
+```{r}
 EDH_unnested<- EDH_tibble %>% 
   unnest(people)
 ```

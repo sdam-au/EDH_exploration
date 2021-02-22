@@ -49,7 +49,6 @@ Please ignore and close the pop-up window asking for username and login. The dat
 resp = request("EDH_text_cleaned_2020-10-09.json", path="/public/b6b6afdb969d378b70929e86e58ad975", method="GET")
 ```
 
-#
 
 2. Make a list and tibble from the request function
 ```{r}

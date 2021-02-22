@@ -293,6 +293,10 @@ EDH_eagle %>%
 write_csv(insc_type_overview_xml, "./EDH_inscription_type_eagle_vocab_xml.csv", col_names = TRUE)
 ```
 
+```{r}
+insc_type_overview_xml
+```
+
 
 ### Total number of unique vocabularies
 ```{r}
