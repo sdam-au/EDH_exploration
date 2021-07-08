@@ -353,15 +353,16 @@ map_ancient_findspot
 ### How many % inscription has a start date
 ```{r}
 not_before<- as.data.frame(unlist(EDH_tibble$not_before))
-nrow(not_before)
-nrow(not_before)/(total/100) 
+
+nrow(na.omit(not_before))
+nrow(na.omit(not_before))/(total/100) 
 ```
 
 ### How many % inscription has an end date
 ```{r}
 not_after<- as.data.frame(unlist(EDH_tibble$not_after))
-nrow(not_after)
-nrow(not_after)/(total/100)
+nrow(na.omit(not_after))
+nrow(na.omit(not_after))/(total/100)
 ```
 
 ### Earliest date
@@ -373,6 +374,38 @@ describe(as.numeric(not_before$`unlist(EDH_tibble$not_before)`))
 ```{r}
 describe(as.numeric(not_after$`unlist(EDH_tibble$not_after)`))
 ```
+
+### Number of inscriptions having both not_before and not_after date
+```{r}
+has_both_dates<- EDH_tibble %>% 
+  select(not_before, not_after) 
+
+has_both_dates<- has_both_dates %>% 
+  mutate(not_before = as.numeric(unlist(not_before))) %>% 
+  mutate(not_after = as.numeric(unlist(not_after)))
+
+has_both_dates <- has_both_dates %>% 
+  filter(!is.na(not_before) & !is.na(not_after)) 
+  
+nrow(has_both_dates)
+
+nrow(has_both_dates)/(nrow(EDH_tibble)/100)
+```
+### The length of dating interval
+```{r}
+has_both_dates<- has_both_dates %>% 
+  mutate(date_interval = (not_before - not_after) * -1)
+
+summary(has_both_dates$date_interval)
+```
+
+
+```{r}
+has_both_dates %>% 
+  count(date_interval, sort= T) %>% 
+  mutate(perc = n/(sum(n)/100))
+```
+
 
 ### Additional dating information available through the 'commentary'
 ```{r}
@@ -390,14 +423,38 @@ str_subset(date_commentary$commentary, "Datierung")
 ```
 
 
-### Number of inscriptions having both not_before and not_after date
 ```{r}
-date_info_complete <- date_info %>% 
-  filter(not_before !="list()") %>% 
-  filter(not_after !="list()") 
-nrow(date_info_complete)
+plot(table(EDH_tibble$not_before), ylab= "Number of inscriptions", xlab="'Not before' YEAR")
 ```
 
 
+# Text of inscription
 
+## How many inscriptions contain a text of an inscription
 
+```{r}
+length(na.omit(EDH_tibble$clean_text_interpretive_word))
+```
+
+In percent:
+```{r}
+length(na.omit(EDH_tibble$clean_text_interpretive_word))/(nrow(EDH_tibble)/100)
+```
+
+## How many words there are:
+
+Original text before cleaning:
+```{r}
+sum(lengths(gregexpr("\\w+", EDH_tibble$transcription)) + 1)
+
+#different counting method
+sum(na.omit(str_count(EDH_tibble$transcription, '\\w+')))
+```
+
+Text after cleaning:
+```{r}
+sum(lengths(gregexpr("\\w+", EDH_tibble$clean_text_interpretive_word)) + 1)
+
+#different counting method
+sum(na.omit(str_count(EDH_tibble$clean_text_interpretive_word, '\\w+')))
+```

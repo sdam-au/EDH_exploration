@@ -1,0 +1,93 @@
+---
+title: "Using Python function in R"
+author: "Petra Hermankova"
+date: "12/03/2021"
+output: html_document
+---
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE}
+devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+library(tidyverse)
+library(sdam)
+library(reticulate)
+```
+
+## Loading data
+1. Load the dataset, if you have Sciencedata.dk credentials
+
+```{r, echo=FALSE}
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+```{r, loading data}
+resp = request("EDH_text_cleaned_2021-01-21.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+```
+
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+
+2. Make a list and tibble from the request function
+```{r}
+list_json <- jsonlite::fromJSON(resp)
+EDH_tibble <- as_tibble(list_json)
+```
+
+3. Display the first 6 records
+```{r}
+head(EDH_tibble)
+```
+
+## Using Reticulate to load Python function
+
+
+
+```{python}
+
+import pandas as pd
+import numpy as np
+# import nltk
+import requests
+import re
+import json
+import random
+#import scipy
+
+#import matplotlib as mpl
+#import matplotlib.pyplot as plt
+#import matplotlib.colors as mcolors
+#import matplotlib.lines as mlines
+#from matplotlib.patches import Patch
+
+#import seaborn as sns
+
+#from sklearn.feature_extraction.text import CountVectorizer
+#from gensim import corpora
+
+#import gspread
+#from gspread_dataframe import get_as_dataframe, set_with_dataframe
+#from google.oauth2 import service_account # based on google-auth library
+
+#import sddk
+```
+
+```{python}
+# read and execute our script for modelling dates - TEMPUN
+script_url = "https://raw.githubusercontent.com/sdam-au/tempun/master/scripts/modelling_distributions.py"
+# execute the script
+exec(requests.get(script_url).content)
+```
+
+```{python}
+%%time
+# generate a list of 1000 random dates for each inscription in the dataset
+# takes approx. 90 seconds in Google colab
+EDH["random_dates"] = EDH.apply(lambda row: model_date(row["not_before"], row["not_after"], size=1000,), axis=1)
+# EDCS["random_dates"] = EDCS.apply(lambda row: model_date(row["dating from"], row["dating to"], size=1000,), axis=1)
+```
+
+

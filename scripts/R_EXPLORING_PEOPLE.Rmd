@@ -17,12 +17,12 @@ output:
 ## Setup of the environment:
 
 ```{r setup, echo=TRUE, message=FALSE}
-devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
 #devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
 library(tidyverse)
-library(sdam)
+#library(sdam)
 library(jsonlite)
-library(getPass)
+#library(getPass)
 library(formatR)
 library(leaflet)
 ```
@@ -30,21 +30,21 @@ library(leaflet)
 ## Loading data
 1. Load the dataset, if you have Sciencedata.dk credentials
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 mycred_secret<- readLines("~/mysecret.txt")
 ```
 
-```{r, loading data}
+```{r, loading data, eval=FALSE}
 resp = request("EDH_attrs_cleaned_2020-09-30.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 remove(mycred_secret)
 ```
 
 2. Make a list and tibble from the request function
 ```{r}
-list_json <- jsonlite::fromJSON(resp)
+list_json <- jsonlite::fromJSON("EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
 ```
 
@@ -78,7 +78,7 @@ Specific case (gender composition)
 1. Ratio of men/women on different types of inscriptions (attribue 'type_of_inscription_clean')
 
 ```{r}
-str(EDH_tibble$people)
+EDH_tibble$people[1:2]
 ```
 
 ```{r}
@@ -97,6 +97,7 @@ One way through gender
 ```{r}
 EDH_unnested %>% 
   count(gender, sort = TRUE) -> gender
+
 sum(gender$n)
 ```
 
@@ -152,7 +153,7 @@ status_counts %>%
   theme_minimal() %>% 
   print()
 
-ggsave("../figures/Status_overview.png", width = 12, height = 8) 
+ggsave("../EDH_people/figures/Status_overview.png", width = 12, height = 8) 
 ```
 
 ## How many inscriptions have ‘Age’ category?
@@ -241,7 +242,7 @@ ages <- ages %>%
 
 ages <- ages %>%
   replace_na(list(months_to_years = 0, days_to_years = 0, hours_to_years = 0)) %>% 
-  mutate(total_age = age_years + months_to_years + days_to_years + hours_to_years) # %>% 
+  mutate(total_age = age_years + months_to_years + days_to_years + hours_to_years) %>% 
   select(-ends_with("to_years"))
 
 ```
@@ -286,7 +287,7 @@ epitaph %>%
   ggplot(aes(x=total_age, y= fct_rev(province_label_clean))) + geom_point(alpha=0.5, color="darkblue") +
   theme_minimal()
 dir.create("../figures")
-ggsave("../figures/Age_years_provinces.png", width = 8, height = 8) 
+ggsave("../EDH_people/figures/Age_years_provinces.png", width = 8, height = 8) 
 ```
 
 
@@ -342,14 +343,14 @@ ggsave("../figures/Age_info_provinces.png", width = 12, height = 12)
 
 ```{r}
 EDH_age<- EDH_age %>%
-  mutate(agegroup = case_when(total_age < 3 ~  "0-3",
-                              total_age < 15 ~ "3-15",
-                              total_age < 30 ~ "15-30",
-                              total_age < 40 ~ "30-40",
-                              total_age < 60 ~ "40-60",
+  mutate(agegroup = case_when(total_age < 3 ~  "0-2.99",
+                              total_age < 15 ~ "3-14.99",
+                              total_age < 30 ~ "15-29.99",
+                              total_age < 40 ~ "30-39.99",
+                              total_age < 60 ~ "40-59.99",
                               total_age > 60 ~ "over 60"))
 
-EDH_age$agegroup <- factor(EDH_age$agegroup, levels = c("0-3", "3-15","15-30", "30-40", "40-60","over 60"))  
+EDH_age$agegroup <- factor(EDH_age$agegroup, levels = c("0-2.99", "3-14.99","15-29.99", "30-39.99", "40-59.99","over 60"))  
 ```
 
 ```{r}
@@ -361,9 +362,9 @@ EDH_age %>%
   #mutate(agegroup_sorted = reorder(agegroup, n)) %>% 
   ggplot() +
   geom_bar(mapping = aes(x = agegroup, fill = agegroup))+
-  labs(x = "Age group", y = "Number of instances", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))
+  labs(x = "Age group (years)", y = "Number of instances", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))
   
-ggsave("../figures/Age_groups_epitaphs.png", width = 12, height = 8) 
+ggsave("../EDH_people/figures/Age_groups_epitaphs.png", width = 12, height = 8) 
 ```
 
 
@@ -386,7 +387,7 @@ epitaph %>%
   geom_text(aes(label = n), colour = "red", fontface = "bold", hjust = -0.1) %>% 
   print()
   
-ggsave("../figures/Gender_total_epitaphs.png", width = 12, height = 12)
+ggsave("../EDH_people/figures/Gender_total_epitaphs.png", width = 12, height = 12)
 
 ```
 
@@ -408,7 +409,7 @@ epitaph %>%
   geom_text(aes(label = ratio_total)) %>% 
   print()
 
-ggsave("../figures/Gender_epitaphs.png", width = 8, height = 8)
+ggsave("../EDH_people/figures/Gender_epitaphs.png", width = 8, height = 8)
 ```
 
 ```{r}
@@ -437,7 +438,7 @@ gender_ratio %>%
   geom_text(aes(label = n), colour = "black", fontface = "bold", vjust = -0.5) %>% 
   print()
 
-ggsave("../figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
+ggsave("../EDH_people/figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
   
 ```
 
@@ -454,7 +455,7 @@ gender_ratio %>%
   geom_text(aes(label = ratio), colour = "black", fontface = "bold", vjust = -0.5) %>% 
   print()
 
-ggsave("../figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
+ggsave("../EDH_people/figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
 ```
 
 # Occupation
@@ -464,3 +465,107 @@ EDH_unnested %>%
   dplyr::filter(occupation == "data available") %>% 
   select()
 ```
+```{r}
+origo<- as.data.frame(EDH_unnested$origo) 
+origo
+
+origo %>% 
+  filter(`EDH_unnested$origo` != "") %>% 
+  #mutate(clean_origo = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>%
+  count(`EDH_unnested$origo`, sort=TRUE)
+```
+```{r}
+EDH_unnested %>% 
+  filter(!is.na(origo)) %>% 
+  count(type_of_inscription_clean, sort=T)
+
+```
+```{r}
+EDH_unnested %>% 
+  filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
+  select(origo, findspot_ancient_clean) %>% 
+  count(findspot_ancient_clean, origo, sort=T)
+```
+```{r}
+EDH_unnested %>% 
+  filter(!is.na(origo)) -> has_origo
+```
+
+```{r}
+EDH_unnested<- EDH_unnested %>% 
+  separate(col = coordinates, into = c("longitude", "latitude"), sep = ",")
+
+EDH_unnested$latitude <- as.numeric(str_replace(EDH_unnested$latitude, pattern = "\\)", replacement=""))
+EDH_unnested$longitude <- as.numeric(str_replace(EDH_unnested$longitude, pattern = "c\\(", replacement=""))
+```
+
+```{r}
+library(raster)
+library(sf)
+
+origo_mapped<- leaflet(width="100%") %>%
+ #addProviderTiles("Stamen.Watercolor")%>% # Add CartoDB map tiles
+ addProviderTiles("Stamen.TerrainBackground")%>% # Add CartoDB map tiles
+ #addProviderTiles("Esri.WorldTopoMap", group = "Topo") %>%
+ #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
+  #setView( lng = 35.9239625, lat = 31.9515694, zoom = 5 ) %>%
+  #setMaxBounds(lat1=43.633977, lng1 =-11.227926 , lat2=35.133882 , lng2=50.882336) %>%
+  #addPolylines(data = roads, color = "purple", weight = 1, opacity = 0.7) %>% 
+ addCircles(lng = EDH_unnested$longitude, 
+             lat = EDH_unnested$latitude, opacity = 0.1, radius = 2, fill = TRUE, color = "red" , fillColor = "red",
+             #popup = paste0("<b> InscriptionID: </b>", provinces_inscriptions$`EDCS-ID`, 
+                           # "<br><b> Ancient findspot: </b>", provinces_inscriptions$place,
+                          # "<br><b> Type of inscription: </b>", provinces_inscriptions$inscr_type,
+                           #   "<br><b> Material: </b>", provinces_inscriptions$Material,
+                           #   "<br><b> Not before (date): </b>", provinces_inscriptions$start_yr,
+                          #  "<br><b> Not after (date): </b>", provinces_inscriptions$end_yr_1,
+                            #    "<br><b> Commentary: </b>", provinces_inscriptions$Comment),
+             ) %>% 
+  #addCircles(lng = decapolis_coords$X, 
+  #           lat = decapolis_coords$Y,
+  #           opacity = 0.5, radius = 15, fill = TRUE, color = "red" , fillColor = "black", popup = paste0("<b> City: </b>", decapolis_coords$Name)) %>% 
+addLegend(position = "bottomright",
+  colors = c("Red"),
+  labels = c("Inscriptions"), opacity = 1,
+  title = "Inscriptions with origo statement" 
+) %>% 
+  addScaleBar(position="bottomleft")
+
+origo_mapped
+
+```
+```{r}
+
+
+# https://www.supplychaindataanalytics.com/leaflet-heatmaps-in-r/
+ 
+#install.packages("leaflet.extras")
+library(leaflet.extras)
+library(RColorBrewer)
+
+heat_origo <- EDH_unnested %>% 
+  leaflet(width="100%") %>%
+  addTiles() %>% 
+  #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
+  #addProviderTiles("Esri.WorldShadedRelief", group = "ESRI Aerial") %>% 
+  #addProviderTiles("Stamen.TerrainBackground") %>%
+  addProviderTiles("Stamen.TonerBackground") %>%
+  #addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  setView( lng = 12.9239625, lat = 41.9515694, zoom = 4 ) %>%
+  #setMaxBounds(lat1=40.633977, lng1 =-4.227926 , lat2=35.133882 , lng2=40.882336) %>%
+ 
+  
+ addHeatmap(lng = ~as.numeric(na.omit(EDH_unnested$longitude)), lat = ~as.numeric(na.omit(EDH_unnested$latitude)), 
+            intensity = 0.1, layerId = NULL, group = NULL, minOpacity = 0.5, #max = 1,
+  radius = 2, blur = 3, gradient = "YlOrRd", cellSize = 1,
+  )
+
+heat_origo
+```
+
+
+
+
+
+
+

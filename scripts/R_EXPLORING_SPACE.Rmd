@@ -1,0 +1,99 @@
+---
+title: "Exploring EDH"
+author: "Petra Hermankova"
+date: "06/05/2021"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    toc_depth: 2
+    df_print: paged
+---
+
+# Initial setup
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE}
+devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+library(tidyverse)
+library(sdam)
+library(jsonlite)
+library(getPass)
+library(formatR)
+library(leaflet)
+```
+---
+
+
+
+## Loading data
+1. Load the dataset, if you have Sciencedata.dk credentials
+
+```{r, echo=FALSE}
+mycred_secret<- readLines("~/mysecret.txt")
+```
+
+```{r, loading data}
+resp = request("EDH_attrs_cleaned_2020-09-30.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
+```
+
+```{r, echo=FALSE}
+remove(mycred_secret)
+```
+
+2. Make a list and tibble from the request function
+```{r}
+list_json <- jsonlite::fromJSON(resp)
+EDH_tibble <- as_tibble(list_json)
+```
+
+3. Display the first 6 records
+```{r}
+head(EDH_tibble)
+```
+
+# Exploring findspot
+```{r}
+str_subset(EDH_tibble$findspot_ancient, "inter")
+  
+EDH_tibble %>% 
+  filter(findspot_ancient %in% str_subset(EDH_tibble$findspot_ancient, "bei") & is.na(findspot_modern))
+```
+
+
+```{r}
+EDH_tibble %>% 
+  filter(findspot_ancient %in% str_subset(EDH_tibble$findspot_ancient, "bei") & is.na(findspot_modern))
+```
+
+
+
+```{r}
+EDH_tibble %>% 
+  filter(findspot_modern %in% str_subset(EDH_tibble$findspot_modern, "bei")  )
+```
+
+```{r}
+
+find_year<- EDH_tibble %>% 
+  select(year_of_find) %>% 
+  mutate(year_num = as.numeric(str_replace(EDH_tibble$year_of_find, "before ", "")))
+
+find_year %>% 
+  filter(year_num > 1980)
+
+find_year_sum<- find_year %>% 
+  filter(year_num > 1990) %>% 
+  nrow() 
+
+find_year_sum / (nrow(EDH_tibble)/100)
+```
+
+```{r}
+EDH_tibble$coordinates
+```
+
