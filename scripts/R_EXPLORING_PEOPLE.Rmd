@@ -12,49 +12,37 @@ output:
     df_print: paged
 ---
 
-# Initial setup
+## Initial setup
 
 ## Setup of the environment:
 
-```{r setup, echo=TRUE, message=FALSE}
+```{r setup, echo=TRUE, message=FALSE, warning = FALSE}
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
 #devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
 #devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
 library(tidyverse)
 #library(sdam)
 library(jsonlite)
-#library(getPass)
-library(formatR)
 library(leaflet)
 ```
 
 ## Loading data
-1. Load the dataset, if you have Sciencedata.dk credentials
 
-```{r, echo=FALSE, eval=FALSE}
-mycred_secret<- readLines("~/mysecret.txt")
-```
-
-```{r, loading data, eval=FALSE}
-resp = request("EDH_attrs_cleaned_2020-09-30.json", path="/sharingin/648597@au.dk/SDAM_root/SDAM_data/EDH/public", method="GET", cred=mycred_secret)
-```
-
-```{r, echo=FALSE, eval=FALSE}
-remove(mycred_secret)
-```
-
-2. Make a list and tibble from the request function
 ```{r}
 list_json <- jsonlite::fromJSON("EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
+dir.create("../figures")
 ```
 
-3. Display the first 6 records
+Display the first 6 records
 ```{r}
 head(EDH_tibble)
 ```
 
 
-# Exploration of the attribute 'People' using tidyverse solution
+# Exploration of 'People' in EDH
 
 0. What are names of all attributes within the 'people' attribute
 1. How many people are in total in the EDH database?
@@ -64,18 +52,22 @@ head(EDH_tibble)
 5. What is the ratio of different statuses, e.g. slave vs freedman
 6. How many inscriptions have ‘Age’ category?
 7. What is the average age of people (years, months, days)
+8. What is the origo of people, what is the origo on funerary inscriptions
 
 
 When I have the pointers how to get the data out of 'people' I will be looking at the following specific cases:
 
-Specific case (funerary inscriptions; attribue 'type_of_inscription_clean' == 'epitaph')
+Specific case (funerary inscriptions; attribute 'type_of_inscription_clean' == 'epitaph')
 1. How many people are on funerary inscriptions (total, average, min, max)
 2. What is the ratio of genders on funerary inscriptions (male, female, NA)
-3. What is the age of people on funerary inscriptions (total number of insc with age, average, min, max)
+3. What is the age of people on funerary inscriptions (total number of inscriptions with age, average, min, max)
 4. What is the average age of people on funerary inscriptions by province
 
 Specific case (gender composition)
-1. Ratio of men/women on different types of inscriptions (attribue 'type_of_inscription_clean')
+1. Ratio of men/women on different types of inscriptions (attribute 'type_of_inscription_clean')
+
+
+
 
 ```{r}
 EDH_tibble$people[1:2]
@@ -111,12 +103,15 @@ nrow(EDH_unnested)
 ```{r}
 summary(as.numeric(EDH_unnested$person_id))
 ```
+# Gender
 
 ## What is the gender ratio of people on inscriptions? (male, female, NA)
 ```{r}
 EDH_unnested %>% 
   count(gender, sort = TRUE)
 ```
+
+# Status
 
 ## What are the names of unique values in the 'status' attribute?
 ```{r}
@@ -141,7 +136,7 @@ status %>%
 status_counts 
 ```
 
-```{r, fig.width=12}
+```{r}
 status_counts %>% 
   mutate(combined_clean = reorder(combined_clean, n)) %>% 
   ggplot(aes(y=combined_clean, x=n, fill=combined_clean)) +
@@ -150,11 +145,11 @@ status_counts %>%
   labs(x = "Number of instances", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(EDH_tibble), "inscriptions"))) +
   geom_label(aes(label= n)) +
   theme_linedraw(base_size = 12) +
-  theme_minimal() %>% 
-  print()
+  theme_minimal() 
 
 ggsave("../EDH_people/figures/Status_overview.png", width = 12, height = 8) 
 ```
+# Age
 
 ## How many inscriptions have ‘Age’ category?
 
@@ -247,12 +242,6 @@ ages <- ages %>%
 
 ```
 
-```{r}
-summary(ages$total_age)
-```
-```{r}
-table(ages$total_age)
-```
 
 ## Combine the total age with the rest of the dataset
 
@@ -272,38 +261,169 @@ EDH_age<- EDH_unnested %>%
 
 ```
 
-# More complex questions
+## Summary of age in years
 
-## What is the age of people on funerary inscriptions by province
+```{r}
+summary(EDH_age$total_age)
+```
+
+### How many percent of people state their age on inscriptions
+```{r}
+length(na.omit(EDH_age$total_age))/(nrow(EDH_age)/100)
+```
+
+
+
+
+# Occupation
+## What are the names of unique values in the 'occupation' attribute?
+```{r}
+EDH_unnested %>% 
+  dplyr::filter(occupation == "data available") %>% 
+  select()
+```
+Unfortunately, ant other details about the occupation are not provided.
+
+# Origin
+```{r}
+origo<- as.data.frame(EDH_unnested$origo) 
+origo
+
+origo %>% 
+  filter(`EDH_unnested$origo` != "") %>% 
+  #mutate(clean_origo = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>%
+  count(`EDH_unnested$origo`, sort=TRUE)
+```
+
+## What kind of inscriptions has origo
+```{r}
+EDH_unnested %>% 
+  filter(!is.na(origo)) %>% 
+  count(type_of_inscription_clean, sort=T)
+
+```
+## What is the findspot vs origo
+```{r}
+EDH_unnested %>% 
+  filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
+  select(origo, findspot_ancient_clean) %>% 
+  count(findspot_ancient_clean, origo, sort=T)
+```
+```{r}
+EDH_unnested %>% 
+  filter(!is.na(origo)) -> has_origo
+```
+
+## Mapping inscriptions with origo
+```{r}
+EDH_unnested<- EDH_unnested %>% 
+  separate(col = coordinates, into = c("longitude", "latitude"), sep = ",")
+
+EDH_unnested$latitude <- as.numeric(str_replace(EDH_unnested$latitude, pattern = "\\)", replacement=""))
+EDH_unnested$longitude <- as.numeric(str_replace(EDH_unnested$longitude, pattern = "c\\(", replacement=""))
+```
+
+```{r}
+library(raster)
+library(sf)
+
+origo_mapped<- leaflet(width="100%") %>%
+ #addProviderTiles("Stamen.Watercolor")%>% # Add CartoDB map tiles
+ addProviderTiles("Stamen.TerrainBackground")%>% # Add CartoDB map tiles
+ #addProviderTiles("Esri.WorldTopoMap", group = "Topo") %>%
+ #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
+  #setView( lng = 35.9239625, lat = 31.9515694, zoom = 5 ) %>%
+  #setMaxBounds(lat1=43.633977, lng1 =-11.227926 , lat2=35.133882 , lng2=50.882336) %>%
+  #addPolylines(data = roads, color = "purple", weight = 1, opacity = 0.7) %>% 
+ addCircles(lng = EDH_unnested$longitude, 
+             lat = EDH_unnested$latitude, opacity = 0.1, radius = 2, fill = TRUE, color = "red" , fillColor = "red",
+             ) %>% 
+  #addCircles(lng = xx$X, 
+  #           lat = xx$Y,
+  #           opacity = 0.5, radius = 15, fill = TRUE, color = "red" , fillColor = "black", popup = paste0("<b> City: </b>", xx$Name)) %>% 
+addLegend(position = "bottomright",
+  colors = c("Red"),
+  labels = c("Inscriptions"), opacity = 1,
+  title = "Inscriptions with origo statement" 
+) %>% 
+  addScaleBar(position="bottomleft")
+
+origo_mapped
+
+```
+
+
+## Heat map of inscriptions with origo
+
+```{r}
+# https://www.supplychaindataanalytics.com/leaflet-heatmaps-in-r/
+ 
+#install.packages("leaflet.extras")
+library(leaflet.extras)
+library(RColorBrewer)
+
+heat_origo <- EDH_unnested %>% 
+  leaflet(width="100%") %>%
+  addTiles() %>% 
+  #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
+  #addProviderTiles("Esri.WorldShadedRelief", group = "ESRI Aerial") %>% 
+  #addProviderTiles("Stamen.TerrainBackground") %>%
+  addProviderTiles("Stamen.TonerBackground") %>%
+  #addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  setView( lng = 12.9239625, lat = 41.9515694, zoom = 4 ) %>%
+  #setMaxBounds(lat1=40.633977, lng1 =-4.227926 , lat2=35.133882 , lng2=40.882336) %>%
+ 
+ addHeatmap(lng = ~as.numeric(na.omit(EDH_unnested$longitude)), lat = ~as.numeric(na.omit(EDH_unnested$latitude)), 
+            intensity = 0.1, layerId = NULL, group = NULL, minOpacity = 0.1, #max = 1,
+  radius = 2, blur = 3, gradient = "YlOrRd", cellSize = 1,
+  )
+
+heat_origo
+```
+
+
+
+
+
+
+
+
+# Special focus - Funerary inscriptions
+
+## Age
+
 ```{r}
 EDH_age %>% 
   filter(type_of_inscription_clean == "epitaph") -> epitaph
 ```
 
+How many percent of people on funerary inscriptions state their age on inscriptions
+
+```{r}
+length(na.omit(epitaph$total_age))/(nrow(epitaph)/100)
+```
+### What is the age of people on funerary inscriptions by province
 ```{r, fig.height=8}
 epitaph %>% 
-  select(total_age, province_label_clean) %>% 
+  dplyr::select(total_age, province_label_clean) %>% 
   count(total_age, province_label_clean, sort=TRUE) %>% 
   ggplot(aes(x=total_age, y= fct_rev(province_label_clean))) + geom_point(alpha=0.5, color="darkblue") +
   theme_minimal()
-dir.create("../figures")
+
 ggsave("../EDH_people/figures/Age_years_provinces.png", width = 8, height = 8) 
 ```
 
-
-## What is the average age of people on funerary inscriptions by province
+### What is the average age of people on funerary inscriptions by province
 
 ```{r}
-# install.packages("psych")
+install.packages("psych")
 library(psych)
 
 describeBy(epitaph$total_age, group = epitaph$province_label_clean, mat = TRUE, digits = 2) -> age_provinces
 head(age_provinces)
 ```
-```{r}
-View(age_provinces)
-```
 
+### Average age by provinces (All inscriptions)
 ```{r, fig.height=12}
 age_provinces %>% 
   filter(n>0) %>% 
@@ -314,14 +434,30 @@ age_provinces %>%
   theme_minimal() +
   theme(text = element_text(size=16)) +
   labs(y="Roman province", x="Years", title= "Average age of people on inscriptions in the EDH database by province", subtitle = "n= 7993 people")+ 
-  geom_label(aes(label= mean)) +
-  geom_text(aes(label = mean), colour = "black", fontface = "bold", hjust = -0.1) %>% 
-  print()
+  #geom_label(aes(label= mean)) +
+  geom_label(aes(label = mean), colour = "black", fontface = "bold", hjust = -0.1) 
   
 ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
 ```
+### ### Average age by provinces, with more than 100 inscriptions containing age per province
+```{r, fig.height=12}
+age_provinces %>% 
+  filter(n>100) %>% 
+  mutate(group1 = reorder(group1, mean)) %>%  
+  ggplot(aes(y=group1, x=mean)) +
+  geom_col(color="white", fill="blue", width=0.8, stat="identity") +
+  #coord_cartesian(xlim=c(0,80)) +
+  theme_minimal() +
+  theme(text = element_text(size=16)) +
+  labs(y="Roman province ", x="Years", title= "Average age of people on inscriptions in the EDH database by province with more than 100 inscriptions stating age", subtitle = "n= 7993 people")+ 
+  #geom_label(aes(label= mean)) +
+  geom_label(aes(label = mean), colour = "black", fontface = "bold", hjust = -0.1)
+  
+ggsave("../figures/Age_average_years_provinces_100plus_inscr.png", width = 12, height = 12) 
+```
 
 
+### Inscriptions with age by provinces
 ```{r, fig.height=12}
 age_provinces %>% 
   filter(n>0) %>% 
@@ -332,14 +468,13 @@ age_provinces %>%
   theme_minimal() +
   theme(text = element_text(size=16)) +
   labs(y="Roman province", x="n", title= "Instances of age information in the EDH database by province", subtitle = "n= 7993 people")+ 
-  geom_label(aes(label= n),hjust = -0.4) +
-  geom_text(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4) %>% 
-  print()
+  #geom_text(aes(label= n),hjust = -0.4) +
+  geom_label(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4) 
 
 ggsave("../figures/Age_info_provinces.png", width = 12, height = 12) 
 ```
 
-
+### Inscriptions by age groups
 
 ```{r}
 EDH_age<- EDH_age %>%
@@ -363,15 +498,130 @@ EDH_age %>%
   ggplot() +
   geom_bar(mapping = aes(x = agegroup, fill = agegroup))+
   labs(x = "Age group (years)", y = "Number of instances", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))
+  #+ geom_label(aes(label = agegroup), colour = "black", fontface = "bold", hjust = -0.4)
+  
+
   
 ggsave("../EDH_people/figures/Age_groups_epitaphs.png", width = 12, height = 8) 
+```
+### Children younger than 10
+
+```{r}
+EDH_age<- EDH_age %>% 
+  mutate(age10 = ifelse(total_age < 10, "under10", "over10"))
+```
+
+#### Province
+```{r, fig.height=14, fig.width=10}
+EDH_age %>% 
+  count(age10, province_label_clean, sort=F) %>% 
+  ggplot(aes(fill=age10, y=province_label_clean, x=n)) +
+  geom_bar(position="fill", stat="identity") +
+  theme_minimal() +
+  #theme(text = element_text(size=16)) +
+  labs(y="Roman province", x="n", title= "Ratio of age children under 10 years on inscriptions per province") 
+  #geom_text(aes(label= n),hjust = -0.4) 
+  #geom_label(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4) 
+
+```
+
+```{r}
+EDH_age10<- EDH_age %>% 
+  count(age10, province_label_clean, sort=F) %>% 
+  spread(key=age10, value=n) 
+
+EDH_under10<- EDH_age10 %>% 
+  mutate(total = rowSums(EDH_age10[2:4], na.rm=TRUE)) %>% 
+  mutate(under10_ratio = under10 / (total/100)) %>% 
+  mutate(over10_ratio = over10 / (total/100)) %>% 
+  mutate(age_stated = (over10+under10) / (total/100))
+
+
+EDH_under10 
 ```
 
 
 
 
+### Average age by individual years 
 
-## What is the gender ratio of people on funerary inscriptions by province
+Using not before and not after date separately.
+
+```{r}
+describeBy(epitaph$total_age, group = epitaph$not_before, mat = TRUE, digits = 2) -> age_not_before
+
+describeBy(epitaph$total_age, group = epitaph$not_after, mat = TRUE, digits = 2) -> age_not_after
+```
+
+### When (which years) do people state their age on funerary inscriptions
+
+```{r}
+age_not_bf_plot<- age_not_before %>% 
+  ggplot(aes(x=group1, y=n)) +
+  geom_point() +
+  geom_vline(xintercept = 1, linetype="dotted", 
+                color = "green", size=0.5) +
+  geom_vline(xintercept = 100, linetype="dotted", 
+                color = "blue", size=0.5) +
+  geom_vline(xintercept = 200, linetype="dotted", 
+                color = "red", size=0.5)
+```
+
+
+```{r}
+age_not_aft_plot<- age_not_after %>% 
+  ggplot(aes(x=group1, y=n)) +
+  geom_point() +
+  geom_vline(xintercept = 1, linetype="dotted", 
+                color = "green", size=0.5) +
+  geom_vline(xintercept = 100, linetype="dotted", 
+                color = "blue", size=0.5) +
+  geom_vline(xintercept = 200, linetype="dotted", 
+                color = "red", size=0.5)
+```
+Commentary: People state their age in the second century the most!
+
+### What is the average age of people on inscriptions in time
+```{r}
+age_not_before %>% 
+  filter(!is.na(mean)) %>% 
+  ggplot(aes(x=as.numeric(group1), y=as.numeric(mean))) +
+  geom_point() +
+  geom_smooth() +
+  geom_vline(xintercept = 0, linetype="dotted", 
+               color = "green", size=0.5) +
+  geom_vline(xintercept = 100, linetype="dotted", 
+                color = "blue", size=0.5) +
+  geom_vline(xintercept = 200, linetype="dotted", 
+                color = "red", size=0.5) +
+  geom_vline(xintercept = 300, linetype="dotted", 
+                color = "brown", size=0.5)
+
+
+
+```
+
+
+```{r}
+age_not_after %>% 
+  filter(!is.na(mean)) %>% 
+  ggplot(aes(x=as.numeric(group1), y=as.numeric(mean))) +
+  geom_point() +
+  geom_smooth() +
+  geom_vline(xintercept = 0, linetype="dotted", 
+               color = "green", size=0.5) +
+  geom_vline(xintercept = 100, linetype="dotted", 
+                color = "blue", size=0.5) +
+  geom_vline(xintercept = 200, linetype="dotted", 
+                color = "red", size=0.5) +
+  geom_vline(xintercept = 300, linetype="dotted", 
+                color = "brown", size=0.5)
+
+```
+
+
+## Gender
+
 ```{r}
 epitaph %>% 
   count(gender, sort=TRUE) %>% 
@@ -383,9 +633,8 @@ epitaph %>%
   theme_minimal() +
   theme(text = element_text(size=14)) +
   labs(y="Gender category", x="Number of instances", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) +
-  geom_label(aes(label= n)) +
-  geom_text(aes(label = n), colour = "red", fontface = "bold", hjust = -0.1) %>% 
-  print()
+  geom_label(aes(label= n)) 
+# +  geom_text(aes(label = n), colour = "red", fontface = "bold", hjust = -0.1) 
   
 ggsave("../EDH_people/figures/Gender_total_epitaphs.png", width = 12, height = 12)
 
@@ -405,9 +654,8 @@ epitaph %>%
   theme_minimal() +
   theme(text = element_text(size=16)) +
   labs(y="Gender category", x="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = ggtitle(paste("n =", nrow(epitaph), "inscriptions" ))) +
-  geom_label(aes(label= ratio_total), hjust = -0.1) +
-  geom_text(aes(label = ratio_total)) %>% 
-  print()
+  geom_label(aes(label= ratio_total), hjust = -0.1) 
+#+ geom_text(aes(label = ratio_total)) 
 
 ggsave("../EDH_people/figures/Gender_epitaphs.png", width = 8, height = 8)
 ```
@@ -434,9 +682,8 @@ gender_ratio %>%
   theme_minimal() +
   theme(text = element_text(size=14)) +
   labs(x="Gender category", y="Number of people", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
-  geom_label(aes(label= n)) +
-  geom_text(aes(label = n), colour = "black", fontface = "bold", vjust = -0.5) %>% 
-  print()
+  #geom_label(aes(label= n)) +
+  geom_label(aes(label = n), colour = "black", fontface = "bold", vjust = 0.5) 
 
 ggsave("../EDH_people/figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
   
@@ -451,117 +698,15 @@ gender_ratio %>%
   theme_minimal() +
   theme(text = element_text(size=14)) +
   labs(x="Gender category", y="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
-  geom_label(aes(label= ratio)) + 
-  geom_text(aes(label = ratio), colour = "black", fontface = "bold", vjust = -0.5) %>% 
-  print()
+  #geom_label(aes(label= ratio)) + 
+  geom_label(aes(label = ratio), colour = "black", fontface = "bold", vjust = 0.5) 
 
 ggsave("../EDH_people/figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
 ```
 
-# Occupation
-## What are the names of unique values in the 'occupation' attribute?
-```{r}
-EDH_unnested %>% 
-  dplyr::filter(occupation == "data available") %>% 
-  select()
-```
-```{r}
-origo<- as.data.frame(EDH_unnested$origo) 
-origo
-
-origo %>% 
-  filter(`EDH_unnested$origo` != "") %>% 
-  #mutate(clean_origo = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>%
-  count(`EDH_unnested$origo`, sort=TRUE)
-```
-```{r}
-EDH_unnested %>% 
-  filter(!is.na(origo)) %>% 
-  count(type_of_inscription_clean, sort=T)
-
-```
-```{r}
-EDH_unnested %>% 
-  filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
-  select(origo, findspot_ancient_clean) %>% 
-  count(findspot_ancient_clean, origo, sort=T)
-```
-```{r}
-EDH_unnested %>% 
-  filter(!is.na(origo)) -> has_origo
-```
-
-```{r}
-EDH_unnested<- EDH_unnested %>% 
-  separate(col = coordinates, into = c("longitude", "latitude"), sep = ",")
-
-EDH_unnested$latitude <- as.numeric(str_replace(EDH_unnested$latitude, pattern = "\\)", replacement=""))
-EDH_unnested$longitude <- as.numeric(str_replace(EDH_unnested$longitude, pattern = "c\\(", replacement=""))
-```
-
-```{r}
-library(raster)
-library(sf)
-
-origo_mapped<- leaflet(width="100%") %>%
- #addProviderTiles("Stamen.Watercolor")%>% # Add CartoDB map tiles
- addProviderTiles("Stamen.TerrainBackground")%>% # Add CartoDB map tiles
- #addProviderTiles("Esri.WorldTopoMap", group = "Topo") %>%
- #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
-  #setView( lng = 35.9239625, lat = 31.9515694, zoom = 5 ) %>%
-  #setMaxBounds(lat1=43.633977, lng1 =-11.227926 , lat2=35.133882 , lng2=50.882336) %>%
-  #addPolylines(data = roads, color = "purple", weight = 1, opacity = 0.7) %>% 
- addCircles(lng = EDH_unnested$longitude, 
-             lat = EDH_unnested$latitude, opacity = 0.1, radius = 2, fill = TRUE, color = "red" , fillColor = "red",
-             #popup = paste0("<b> InscriptionID: </b>", provinces_inscriptions$`EDCS-ID`, 
-                           # "<br><b> Ancient findspot: </b>", provinces_inscriptions$place,
-                          # "<br><b> Type of inscription: </b>", provinces_inscriptions$inscr_type,
-                           #   "<br><b> Material: </b>", provinces_inscriptions$Material,
-                           #   "<br><b> Not before (date): </b>", provinces_inscriptions$start_yr,
-                          #  "<br><b> Not after (date): </b>", provinces_inscriptions$end_yr_1,
-                            #    "<br><b> Commentary: </b>", provinces_inscriptions$Comment),
-             ) %>% 
-  #addCircles(lng = decapolis_coords$X, 
-  #           lat = decapolis_coords$Y,
-  #           opacity = 0.5, radius = 15, fill = TRUE, color = "red" , fillColor = "black", popup = paste0("<b> City: </b>", decapolis_coords$Name)) %>% 
-addLegend(position = "bottomright",
-  colors = c("Red"),
-  labels = c("Inscriptions"), opacity = 1,
-  title = "Inscriptions with origo statement" 
-) %>% 
-  addScaleBar(position="bottomleft")
-
-origo_mapped
-
-```
-```{r}
 
 
-# https://www.supplychaindataanalytics.com/leaflet-heatmaps-in-r/
- 
-#install.packages("leaflet.extras")
-library(leaflet.extras)
-library(RColorBrewer)
 
-heat_origo <- EDH_unnested %>% 
-  leaflet(width="100%") %>%
-  addTiles() %>% 
-  #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
-  #addProviderTiles("Esri.WorldShadedRelief", group = "ESRI Aerial") %>% 
-  #addProviderTiles("Stamen.TerrainBackground") %>%
-  addProviderTiles("Stamen.TonerBackground") %>%
-  #addProviderTiles("CartoDB.VoyagerNoLabels") %>%
-  setView( lng = 12.9239625, lat = 41.9515694, zoom = 4 ) %>%
-  #setMaxBounds(lat1=40.633977, lng1 =-4.227926 , lat2=35.133882 , lng2=40.882336) %>%
- 
-  
- addHeatmap(lng = ~as.numeric(na.omit(EDH_unnested$longitude)), lat = ~as.numeric(na.omit(EDH_unnested$latitude)), 
-            intensity = 0.1, layerId = NULL, group = NULL, minOpacity = 0.5, #max = 1,
-  radius = 2, blur = 3, gradient = "YlOrRd", cellSize = 1,
-  )
-
-heat_origo
-```
 
 
 
