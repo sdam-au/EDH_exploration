@@ -514,7 +514,7 @@ EDH_age<- EDH_age %>%
 #### Province
 ```{r, fig.height=14, fig.width=10}
 EDH_age %>% 
-  count(age10, province_label_clean, sort=F) %>% 
+  count(age10, province_label_clean) %>% 
   ggplot(aes(fill=age10, y=province_label_clean, x=n)) +
   geom_bar(position="fill", stat="identity") +
   theme_minimal() +
@@ -539,7 +539,98 @@ EDH_under10<- EDH_age10 %>%
 
 EDH_under10 
 ```
+```{r, fig.height=14, fig.width=10}
+EDH_under10 %>%
+  dplyr::select(province_label_clean, over10_ratio) %>% 
+  #sort(over10_ratio, decreasing = TRUE, na.last = TRUE) %>% 
+  ggplot(aes(y=province_label_clean, x=over10_ratio)) +
+  geom_bar(stat="identity", position = "dodge") +
+  theme_minimal() +
+  #theme(text = element_text(size=16)) +
+  labs(y="Roman province", x="%", title= "Ratio of children under 10 years on inscriptions per province") 
+  #geom_text(aes(label= n),hjust = -0.4) 
+  #geom_label(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4)
+```
 
+### Rounding of age on inscriptions
+```{r}
+EDH_age %>% 
+  dplyr::select(total_age) %>% 
+  filter(total_age == str_subset(total_age, "5$|0$")) -> rounded_age
+
+
+all_ages <- as.data.frame(na.omit(EDH_age$total_age))
+nrow(rounded_age)/(nrow(all_ages)/100)
+```
+
+```{r}
+rounded_age %>% 
+  count(total_age)
+```
+### Non-rounded ages
+
+```{r, fig.width=10}
+all_ages %>% 
+  count(`na.omit(EDH_age$total_age)`) %>% 
+  mutate(total_age =`na.omit(EDH_age$total_age)`) %>% 
+  ggplot(aes(x=total_age, y =n, colour=-n)) +
+  geom_point(alpha=0.5) +
+  geom_smooth() +
+  geom_vline(xintercept = 10, linetype="dotted", 
+               color = "green", size=0.5) +
+  geom_vline(xintercept = 30, linetype="dotted", 
+                color = "blue", size=0.5) +
+  geom_vline(xintercept = 50, linetype="dotted", 
+                color = "red", size=0.5) +
+  geom_vline(xintercept = 70, linetype="dotted", 
+                color = "brown", size=0.5)
+  
+```
+### Population pyramid in funerary inscriptions
+
+
+
+
+```{r}
+EDH_age %>% 
+  dplyr::select(gender, total_age) %>% 
+  na.omit(gender) %>% 
+  na.omit(total_age)  %>% 
+  mutate(gender = str_replace(gender, "M\\?", "male")) %>% 
+  mutate(gender = str_replace(gender, "F\\?", "female")) -> population_age
+
+## cut the age variable into age groups with 5-year intervals
+population_age$age_cut <- cut(population_age$total_age, breaks = seq(0, 100, 5), right = FALSE) 
+population_age$population <- 1 ## each sampled respondent represents 10 individuals
+
+
+## aggregate the data by gender and age group
+population_age <- aggregate(formula = population ~ gender + age_cut, data = population_age, FUN = sum)
+
+## sort data by first by gender, then by age groups
+population_age <- with(population_age, population_age[order(gender, age_cut),])
+
+#labels
+labels<- c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90-94", "95-99", "100-104", "105-109", "110-114", "115-119", "120-124", "125-129", "130-134", "135-139", "140-144", "145-149", "150-154", "155-159")
+labels_df <- as.data.frame(labels)
+
+population_age <- population_age %>% 
+  mutate(age = str_replace(age_cut, "\\[", "")) %>% 
+  mutate(age = str_replace(age, "\\)", "")) %>% 
+  mutate(age = str_replace(age, "\\,", " - ")) 
+  
+
+population_age <- population_age[,c("age","gender","population")]
+
+population_age$population <- ifelse(population_age$gender == "male", -1*population_age$population, population_age$population)
+
+
+pyramid_age <- ggplot(population_age, aes(x = age, y = population, fill = gender)) + 
+  geom_bar(data = subset(population_age, gender == "female"), stat = "identity") +
+  geom_bar(data = subset(population_age, gender == "male"), stat = "identity") + 
+  coord_flip()
+pyramid_age
+```
 
 
 
