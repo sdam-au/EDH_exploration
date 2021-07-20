@@ -25,6 +25,7 @@ library(jsonlite)
 library(leaflet)
 library(tidytext)
 library(udpipe)
+library(dplyr)
 ```
 
 ## Loading data
@@ -45,6 +46,7 @@ remove(mycred_secret)
 2. Make a list and tibble from the request function
 ```{r}
 list_json <- jsonlite::fromJSON(resp)
+list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
 ```
 
@@ -52,6 +54,15 @@ EDH_tibble <- as_tibble(list_json)
 ```{r}
 head(EDH_tibble)
 ```
+# Creating sample with random 1000 inscriptions
+
+```{r}
+sample<- dplyr::sample_n(EDH_tibble, 1000)
+```
+
+
+
+
 
 # Text mining using udpipe package
 source: https://cran.r-project.org/web/packages/udpipe/vignettes/udpipe-annotation.html#udpipe_-_general
@@ -75,28 +86,41 @@ dl2 <- udpipe_download_model(udpipe_model_repo = "jwijffels/udpipe.models.ud.2.5
 # udmodel_anc_greek <- udpipe_load_model(file = "ancient_greek-perseus-ud-2.4-190531.udpipe")
 
 # perseus
-udmodel_latin <- udpipe_load_model(file = "../data/latin-perseus-ud-2.5-191206.udpipe")
+udmodel_latin_pers <- udpipe_load_model(file = "../data/latin-perseus-ud-2.5-191206.udpipe")
 
 # proiel
-udmodel_latin <- udpipe_load_model(file = "../data/latin-proiel-ud-2.5-191206.udpipe")
+udmodel_latin_proi <- udpipe_load_model(file = "../data/latin-proiel-ud-2.5-191206.udpipe")
 
 ```
 
 ## Anotate the text using UDpipe
+
+### Perseus
 ```{r}
-udpipe_text <- as.data.frame(udpipe_annotate(udmodel_latin, x = EDH_tibble$clean_text_interpretive_word))
-str(udpipe_text)
+udpipe_text_pers <- as.data.frame(udpipe_annotate(udmodel_latin_pers, x = sample$clean_text_interpretive_word))
+str(udpipe_text_pers)
 ```
 
+
+### Proiel
+```{r}
+udpipe_text_proi <- as.data.frame(udpipe_annotate(udmodel_latin_proi, x = sample$clean_text_interpretive_word))
+str(udpipe_text_proi)
+```
 
 ## Overview of linguistic word categories
 ```{r}
-table(udpipe_text$upos)
+table(udpipe_text_pers$upos)
+table(udpipe_text_proi$upos)
 ```
 
 ```{r}
-nouns <- udpipe_text %>% 
-  filter(udpipe_text$upos == "NOUN") 
+nouns_pers <- udpipe_text_pers %>% 
+  filter(udpipe_text_pers$upos == "NOUN") 
+nouns_pers
+nouns_proi <- udpipe_text_proi %>% 
+  filter(udpipe_text_proi$upos == "NOUN") 
+nouns_proi
 ```
 
 ```{r}
