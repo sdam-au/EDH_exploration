@@ -1,7 +1,7 @@
 ---
 title: "Exploration of the 'people' attribute in EDH dataset"
 author: "Petra Hermankova"
-date: "22/10/2020"
+date: "04/08/2021"
 output:
   html_document:
     theme: united
@@ -31,9 +31,11 @@ library(leaflet)
 ## Loading data
 
 ```{r}
-list_json <- jsonlite::fromJSON("EDH_text_cleaned_2021-01-21.json")
+getwd()
+
+list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
-dir.create("../figures")
+#dir.create("../figures")
 ```
 
 Display the first 6 records
@@ -147,7 +149,7 @@ status_counts %>%
   theme_linedraw(base_size = 12) +
   theme_minimal() 
 
-ggsave("../EDH_people/figures/Status_overview.png", width = 12, height = 8) 
+ggsave("../figures/Status_overview.png", width = 12, height = 8) 
 ```
 # Age
 
@@ -155,7 +157,7 @@ ggsave("../EDH_people/figures/Status_overview.png", width = 12, height = 8)
 
 ```{r}
 EDH_unnested %>% 
-  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
   filter(!is.na(EDH_unnested$`age: years`) | !is.na(EDH_unnested$`age: months`) | !is.na(EDH_unnested$`age: days`) |!is.na(EDH_unnested$`age: hours`))
 ```
 
@@ -169,7 +171,7 @@ unique(EDH_unnested$`age: years`)
 ```{r}
 sum(!is.na(EDH_unnested$`age: years`))
 EDH_unnested %>% 
-  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
   filter(!is.na(EDH_unnested$`age: years`))
 ```
 
@@ -177,7 +179,7 @@ EDH_unnested %>%
 ```{r}
 sum(!is.na(EDH_unnested$`age: months`))
 EDH_unnested %>% 
-  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
   filter(!is.na(EDH_unnested$`age: months`))
 ```
 
@@ -185,7 +187,7 @@ EDH_unnested %>%
 ```{r}
 sum(!is.na(EDH_unnested$`age: days`))
 EDH_unnested %>% 
-  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
   filter(!is.na(EDH_unnested$`age: days`))
 ```
 
@@ -193,7 +195,7 @@ EDH_unnested %>%
 ```{r}
 sum(!is.na(EDH_unnested$`age: hours`))
 EDH_unnested %>% 
-  select('age: days', 'age: months', 'age: hours', 'age: years') %>%
+  dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
   filter(!is.na(EDH_unnested$`age: hours`))
 ```
 
@@ -211,7 +213,7 @@ summary(as.numeric(EDH_unnested$`age: hours`))
 Better method using regular expressions to detect years and converting them as numeric
 ```{r}
 EDH_unnested %>% 
-  select('age: days', 'age: months', 'age: hours', 'age: years') %>% 
+  dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>% 
   mutate(age_years = as.numeric(str_extract(EDH_unnested$'age: years', pattern = "[:digit:]+"))) %>% 
   mutate(age_months = as.numeric(str_extract(EDH_unnested$'age: months', pattern = "[:digit:]+"))) %>%
   mutate(age_days = as.numeric(str_extract(EDH_unnested$'age: days', pattern = "[:digit:]+"))) %>%
@@ -238,7 +240,7 @@ ages <- ages %>%
 ages <- ages %>%
   replace_na(list(months_to_years = 0, days_to_years = 0, hours_to_years = 0)) %>% 
   mutate(total_age = age_years + months_to_years + days_to_years + hours_to_years) %>% 
-  select(-ends_with("to_years"))
+  dplyr::select(-ends_with("to_years"))
 
 ```
 
@@ -257,7 +259,7 @@ EDH_age<- EDH_unnested %>%
   mutate(hours_to_years = age_hours / (24*365)) %>% 
   replace_na(list(months_to_years = 0, days_to_years = 0, hours_to_years = 0)) %>% 
   mutate(total_age = age_years + months_to_years + days_to_years + hours_to_years) %>% 
-  select(-ends_with("to_years")) 
+  dplyr::select(-ends_with("to_years")) 
 
 ```
 
@@ -410,16 +412,16 @@ epitaph %>%
   ggplot(aes(x=total_age, y= fct_rev(province_label_clean))) + geom_point(alpha=0.5, color="darkblue") +
   theme_minimal()
 
-ggsave("../EDH_people/figures/Age_years_provinces.png", width = 8, height = 8) 
+ggsave("../figures/Age_years_provinces.png", width = 8, height = 8) 
 ```
 
 ### What is the average age of people on funerary inscriptions by province
 
 ```{r}
-install.packages("psych")
+#install.packages("psych")
 library(psych)
 
-describeBy(epitaph$total_age, group = epitaph$province_label_clean, mat = TRUE, digits = 2) -> age_provinces
+psych::describeBy(epitaph$total_age, group = epitaph$province_label_clean, mat = TRUE, digits = 2) -> age_provinces
 head(age_provinces)
 ```
 
@@ -439,6 +441,7 @@ age_provinces %>%
   
 ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
 ```
+
 ### ### Average age by provinces, with more than 100 inscriptions containing age per province
 ```{r, fig.height=12}
 age_provinces %>% 
@@ -502,7 +505,7 @@ EDH_age %>%
   
 
   
-ggsave("../EDH_people/figures/Age_groups_epitaphs.png", width = 12, height = 8) 
+ggsave("../figures/Age_groups_epitaphs.png", width = 12, height = 8) 
 ```
 ### Children younger than 10
 
@@ -727,7 +730,7 @@ epitaph %>%
   geom_label(aes(label= n)) 
 # +  geom_text(aes(label = n), colour = "red", fontface = "bold", hjust = -0.1) 
   
-ggsave("../EDH_people/figures/Gender_total_epitaphs.png", width = 12, height = 12)
+ggsave("../figures/Gender_total_epitaphs.png", width = 12, height = 12)
 
 ```
 
@@ -748,7 +751,7 @@ epitaph %>%
   geom_label(aes(label= ratio_total), hjust = -0.1) 
 #+ geom_text(aes(label = ratio_total)) 
 
-ggsave("../EDH_people/figures/Gender_epitaphs.png", width = 8, height = 8)
+ggsave("../figures/Gender_epitaphs.png", width = 8, height = 8)
 ```
 
 ```{r}
@@ -776,7 +779,7 @@ gender_ratio %>%
   #geom_label(aes(label= n)) +
   geom_label(aes(label = n), colour = "black", fontface = "bold", vjust = 0.5) 
 
-ggsave("../EDH_people/figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
+ggsave("../figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
   
 ```
 
@@ -792,7 +795,7 @@ gender_ratio %>%
   #geom_label(aes(label= ratio)) + 
   geom_label(aes(label = ratio), colour = "black", fontface = "bold", vjust = 0.5) 
 
-ggsave("../EDH_people/figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
+ggsave("../figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
 ```
 
 

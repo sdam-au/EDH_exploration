@@ -1,0 +1,100 @@
+---
+title: "Exploring epigraphic formulae"
+author: "Petra Hermankova"
+date: "4/8/2021"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    toc_depth: 2
+    df_print: paged
+---
+
+## Initial setup
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE, warning = FALSE}
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+#devtools::install_github("sdam-au/sdam") # loading SDAM custom package, if not working try devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+#devtools::install_github("mplex/cedhar", subdir="pkg/sdam")
+library(tidyverse)
+#library(sdam)
+library(jsonlite)
+library(leaflet)
+```
+
+## Loading data
+
+```{r}
+getwd()
+
+list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2021-01-21.json")
+EDH_tibble <- as_tibble(list_json)
+#dir.create("../figures")
+```
+
+Display the first 6 records
+```{r}
+head(EDH_tibble)
+```
+
+# Epigraphic formulae
+
+
+## Dis Manibus 
+Typically occurs on funerary inscriptions, invocation of the underworld gods.
+
+Canonic Versions:
+
+D M
+D M S
+Dis Manibus
+Diis Manibus
+Dis Manibus Sacrum
+Diis Manibus Sacrum
+
+
+```{r}
+dis_manibus <- c("\\b[D|d]i{1,2}s\\b, \\b[M|m]anibus\\b", "\\b[S|s]acrum\\b", "\\b[D|d]\\b \\b[M|m]\\b", "\\b[D|d]\\b \\b[M|m]\\b \\b[S|s]\\b")
+
+EDH_tibble %>% 
+  filter(clean_text_interpretive_word %in% dis_manibus) %>% 
+  dplyr::select(clean_text_interpretive_word)
+
+EDH_tibble %>% 
+  filter(clean_text_interpretive_word == str_subset(clean_text_interpretive_word, "anibus")) %>% 
+  dplyr::select(clean_text_interpretive_word)
+```
+
+## Hic Situs/Sita Est
+
+Typically occurs on funerary inscriptions, introducing the name of the deceased, marking his or hers resting place.
+
+Canonic Versions:
+
+H S E
+Hic Situs Est
+His Sita Est
+
+H S S
+Hic Siti Sunt
+
+## Requiescit in pace (RIP)
+
+Typically occurs on funerary inscriptions, introducing the name of the deceased who is perting in peace.
+
+REQ
+REQUISCIT
+REQUIES
+
+Hic requiescit
+Hic requiescit in pace
+Requievit 
+
+full list https://www.trismegistos.org/abb/detail.php?id=64741
+
