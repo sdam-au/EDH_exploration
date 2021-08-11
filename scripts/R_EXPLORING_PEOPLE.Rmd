@@ -311,10 +311,7 @@ EDH_unnested %>%
   select(origo, findspot_ancient_clean) %>% 
   count(findspot_ancient_clean, origo, sort=T)
 ```
-```{r}
-EDH_unnested %>% 
-  filter(!is.na(origo)) -> has_origo
-```
+
 
 ## Mapping inscriptions with origo
 ```{r}
@@ -323,6 +320,11 @@ EDH_unnested<- EDH_unnested %>%
 
 EDH_unnested$latitude <- as.numeric(str_replace(EDH_unnested$latitude, pattern = "\\)", replacement=""))
 EDH_unnested$longitude <- as.numeric(str_replace(EDH_unnested$longitude, pattern = "c\\(", replacement=""))
+```
+
+```{r}
+EDH_unnested %>% 
+  filter(!is.na(origo)) -> has_origo
 ```
 
 ```{r}
@@ -337,8 +339,8 @@ origo_mapped<- leaflet(width="100%") %>%
   #setView( lng = 35.9239625, lat = 31.9515694, zoom = 5 ) %>%
   #setMaxBounds(lat1=43.633977, lng1 =-11.227926 , lat2=35.133882 , lng2=50.882336) %>%
   #addPolylines(data = roads, color = "purple", weight = 1, opacity = 0.7) %>% 
- addCircles(lng = EDH_unnested$longitude, 
-             lat = EDH_unnested$latitude, opacity = 0.1, radius = 2, fill = TRUE, color = "red" , fillColor = "red",
+ addCircles(lng = has_origo$longitude, 
+             lat = has_origo$latitude, opacity = 0.1, radius = 2, fill = TRUE, color = "red" , fillColor = "red",
              ) %>% 
   #addCircles(lng = xx$X, 
   #           lat = xx$Y,
@@ -364,7 +366,7 @@ origo_mapped
 library(leaflet.extras)
 library(RColorBrewer)
 
-heat_origo <- EDH_unnested %>% 
+heat_origo <- has_origo %>% 
   leaflet(width="100%") %>%
   addTiles() %>% 
   #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
@@ -375,9 +377,9 @@ heat_origo <- EDH_unnested %>%
   setView( lng = 12.9239625, lat = 41.9515694, zoom = 4 ) %>%
   #setMaxBounds(lat1=40.633977, lng1 =-4.227926 , lat2=35.133882 , lng2=40.882336) %>%
  
- addHeatmap(lng = ~as.numeric(na.omit(EDH_unnested$longitude)), lat = ~as.numeric(na.omit(EDH_unnested$latitude)), 
-            intensity = 0.1, layerId = NULL, group = NULL, minOpacity = 0.1, #max = 1,
-  radius = 2, blur = 3, gradient = "YlOrRd", cellSize = 1,
+ addHeatmap(lng = ~as.numeric(na.omit(has_origo$longitude)), lat = ~as.numeric(na.omit(has_origo$latitude)), 
+            intensity = 0.5, layerId = NULL, group = NULL, minOpacity = 0.5, #max = 1,
+  radius = 2, blur = 2, gradient = "YlOrRd", cellSize = 1,
   )
 
 heat_origo
