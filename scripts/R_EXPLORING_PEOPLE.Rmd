@@ -312,6 +312,33 @@ EDH_unnested %>%
   count(findspot_ancient_clean, origo, sort=T)
 ```
 
+## Cleaning origo
+
+```{r}
+EDH_unnested <- EDH_unnested %>%
+  mutate(origo_clean = str_replace_all(origo, pattern="[\\*|\\+|\\?|\\!]", replacement="")) %>%
+  mutate(origo_clean = str_replace_all(origo_clean, pattern="(\\w+) \\(= (\\w+)\\)", replacement="\\2")) %>%
+  mutate(origo_clean = str_replace_all(origo_clean, pattern="gente|genitus|gentis|natus|civis|Civis|civus|natione|nato|regione|domo|domu|cives|cive|civi|ex|verna", replacement="")) %>%
+  mutate(origo_clean = str_replace_all(origo_clean, pattern="^ ", replacement="")) %>%
+  mutate(origo_clean = str_replace_all(origo_clean, pattern="  ", replacement=" ")) 
+
+```
+
+```{r}
+EDH_unnested %>%
+  filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
+  select(origo_clean, id) -> EDH_origo_out
+```
+
+
+```{r}
+write.csv(EDH_origo_out, "../data/EDH_origo_out.csv")
+```
+
+
+
+
+
 
 ## Mapping inscriptions with origo
 ```{r}
