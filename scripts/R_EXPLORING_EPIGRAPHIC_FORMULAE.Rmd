@@ -45,10 +45,17 @@ EDH_tibble <- as_tibble(list_json)
 Display the first 6 records
 ```{r}
 head(EDH_tibble)
+```
 
+## Text preparation
+
+Converting text of inscriptions to lowercase
+
+```{r}
 EDH_tibble <- EDH_tibble %>% 
   mutate(clean_text_interpretive_word_lowercase = str_to_lower(EDH_tibble$clean_text_interpretive_word))
 ```
+
 
 # Epigraphic formulae
 
@@ -65,7 +72,7 @@ Diis Manibus
 Dis Manibus Sacrum
 Diis Manibus Sacrum
 
-
+Confirming it exists in the text of inscriptions
 ```{r}
 table(str_count(EDH_tibble$clean_text_interpretive_word_lowercase, "dis manibus"))
 ```
@@ -74,6 +81,7 @@ table(str_count(EDH_tibble$clean_text_interpretive_word_lowercase, "dis manibus"
 table(str_count(EDH_tibble$clean_text_interpretive_word, "d m"))
 ```
 
+Searching for all *typical* variants of the formula
 ```{r}
 dis_manibus_regex <- "\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus"
 
@@ -83,9 +91,13 @@ EDH_tibble %>%
   filter(clean_text_interpretive_word_lowercase %in% dis_manibus) %>% 
   dplyr::select(clean_text_interpretive_word)
 ```
+
+How many of different variants are present
 ```{r}
 table(str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex))
 ```
+
+Creating new attribute with the separated formula
 ```{r}
 EDH_tibble<- EDH_tibble %>% 
   mutate(form_dis_manibus = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex))
@@ -93,7 +105,6 @@ EDH_tibble<- EDH_tibble %>%
 ```
 
 Count by type of formula and province
-
 ```{r, fig.height=12}
 EDH_tibble %>% 
   filter(!is.na(form_dis_manibus)) %>% 
@@ -110,8 +121,8 @@ EDH_tibble %>%
 
 
 Map of Dis Manibus occurences
-
 ```{r}
+# preparation of coordinates
 EDH_tibble<- EDH_tibble %>% 
   separate(col = coordinates, into = c("longitude", "latitude"), sep = ",")
 
@@ -121,9 +132,7 @@ EDH_tibble$longitude <- as.numeric(str_replace(EDH_tibble$longitude, pattern = "
 
 
 ```{r}
-EDH_DM <- EDH_tibble %>% 
-  filter(!is.na(form_dis_manibus))
-
+#icons colorschemes
 getColor <- function(manibus) {
   sapply(EDH_DM$form_dis_manibus, function(form_dis_manibus) {
   if(form_dis_manibus == "d m") {
@@ -146,10 +155,32 @@ icons <- awesomeIcons(
   library = 'ion',
   markerColor = getColor(df.20)
 )
+```
 
 
 
-DM_map<- EDH_DM %>% 
+```{r}
+#non-empty dis manibus attribute
+EDH_DM <- EDH_tibble %>% 
+  filter(!is.na(form_dis_manibus))
+
+# dis manibus formula
+EDH_dis_manibus <- EDH_DM %>% 
+  filter(form_dis_manibus == "dis manibus")
+
+# dis manibus sacrum formula
+EDH_dis_manibus_sacrum <- EDH_DM %>% 
+  filter(form_dis_manibus == "dis manibus sacrum")
+
+#abbreviated dis manibus formula
+EDH_d_m <- EDH_DM %>% 
+  filter(form_dis_manibus == "d m")
+
+#abbreviated dis manibus sacrum formula
+EDH_d_m_s <- EDH_DM %>% 
+  filter(form_dis_manibus == "d m s")
+
+DM_map<- head(EDH_DM, 100) %>% 
   leaflet(width="100%") %>%
   #addProviderTiles("Stamen.Watercolor")%>% # Add CartoDB map tiles
   addProviderTiles("Stamen.TerrainBackground")%>% # Add CartoDB map tiles
@@ -158,18 +189,26 @@ DM_map<- EDH_DM %>%
   setView( lng = 12.9239625, lat = 41.9515694, zoom = 3.5 ) %>%
   #setMaxBounds(lat1=43.633977, lng1 =-11.227926 , lat2=35.133882 , lng2=50.882336) %>%
   #addPolylines(data = roads, color = "purple", weight = 1, opacity = 0.7) %>% 
-  #addCircles(lng = EDH_tibble$longitude, 
-  #           lat = EDH_tibble$latitude, opacity = 0.1, radius = 1, fill = TRUE, color = "red" , fillColor = "red",
-  #           ) %>% 
-  addAwesomeMarkers(~EDH_tibble$longitude, ~EDH_tibble$latitude, icon=icons)) %>% 
+  
+  addCircles(lng = EDH_dis_manibus$longitude, 
+             lat = EDH_dis_manibus$latitude, opacity = 0.1, radius = 1, fill = T , color = "blue" , fillColor = "blue",) %>%
+  addCircles(lng = EDH_dis_manibus_sacrum$longitude, 
+             lat = EDH_dis_manibus_sacrum$latitude, opacity = 0.1, radius = 1, fill = T , color = "red" , fillColor = "red",) %>%
+  addCircles(lng = EDH_d_m_s$longitude, 
+             lat = EDH_d_m_s$latitude, opacity = 0.1, radius = 1, fill = T , color = "yellow" , fillColor = "yellow",)  %>% 
+  addCircles(lng = EDH_d_m$longitude, 
+             lat = EDH_d_m$latitude, opacity = 0.1, radius = 1, fill = T , color = "orange" , fillColor = "orange",) %>% 
+
+  
+  #addAwesomeMarkers(~EDH_tibble$longitude, ~EDH_tibble$latitude, icon=icons) %>% 
   addLegend(position = "bottomright",
-  colors = c("Red"),
-  labels = c("Findspot"), opacity = 1,
-  title = "Inscriptions with Dis Manibus formula" 
+  colors = c("Red", "Blue", "Orange", "Yellow"),
+  labels = c("dis manibus sacrum", "dis manibus", "d m", "d m s"), opacity = 1,
+  title = "Dis Manibus formula on inscriptions (EDH)" 
 ) %>% 
   addScaleBar(position="bottomleft")
 
-#DM_map
+DM_map
 ```
 
 
