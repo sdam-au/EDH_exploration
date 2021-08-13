@@ -28,11 +28,15 @@ library(jsonlite)
 library(leaflet)
 ```
 
-## Loading data
+## Loading data from Sciencedata.dk
 
 ```{r}
-getwd()
+#list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
+#EDH_tibble <- as_tibble(list_json)
+```
 
+## Loading data locally
+```{r}
 list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
 #dir.create("../figures")
@@ -41,6 +45,9 @@ EDH_tibble <- as_tibble(list_json)
 Display the first 6 records
 ```{r}
 head(EDH_tibble)
+
+EDH_tibble <- EDH_tibble %>% 
+  mutate(clean_text_interpretive_word_lowercase = str_to_lower(EDH_tibble$clean_text_interpretive_word))
 ```
 
 # Epigraphic formulae
@@ -60,16 +67,112 @@ Diis Manibus Sacrum
 
 
 ```{r}
-dis_manibus <- c("\\b[D|d]i{1,2}s\\b, \\b[M|m]anibus\\b", "\\b[S|s]acrum\\b", "\\b[D|d]\\b \\b[M|m]\\b", "\\b[D|d]\\b \\b[M|m]\\b \\b[S|s]\\b")
+table(str_count(EDH_tibble$clean_text_interpretive_word_lowercase, "dis manibus"))
+```
+
+```{r}
+table(str_count(EDH_tibble$clean_text_interpretive_word, "d m"))
+```
+
+```{r}
+dis_manibus_regex <- "\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus"
+
+dis_manibus<- str_subset(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex)
 
 EDH_tibble %>% 
-  filter(clean_text_interpretive_word %in% dis_manibus) %>% 
-  dplyr::select(clean_text_interpretive_word)
-
-EDH_tibble %>% 
-  filter(clean_text_interpretive_word == str_subset(clean_text_interpretive_word, "anibus")) %>% 
+  filter(clean_text_interpretive_word_lowercase %in% dis_manibus) %>% 
   dplyr::select(clean_text_interpretive_word)
 ```
+```{r}
+table(str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex))
+```
+```{r}
+EDH_tibble<- EDH_tibble %>% 
+  mutate(form_dis_manibus = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex))
+
+```
+
+Count by type of formula and province
+
+```{r, fig.height=12}
+EDH_tibble %>% 
+  filter(!is.na(form_dis_manibus)) %>% 
+  #count(province_label_clean, form_dis_manibus, sort=T) %>% 
+  ggplot(aes(y=province_label_clean)) + 
+  geom_bar(aes(fill=form_dis_manibus)) +
+  coord_cartesian(xlim=c(0,1700)) +
+  theme_minimal() +
+  theme(text = element_text(size=12)) +
+  labs(y="Roman province", x="Formula", title= "Dis Manibus formula by province", subtitle = "n=81,476 insc (EDH)") 
+  #geom_label(aes(label= form_dis_manibus)) +
+  #geom_label(aes(label = form_dis_manibus), colour = "black", fontface = "bold", hjust = -0.1) 
+```
+
+
+Map of Dis Manibus occurences
+
+```{r}
+EDH_tibble<- EDH_tibble %>% 
+  separate(col = coordinates, into = c("longitude", "latitude"), sep = ",")
+
+EDH_tibble$latitude <- as.numeric(str_replace(EDH_tibble$latitude, pattern = "\\)", replacement=""))
+EDH_tibble$longitude <- as.numeric(str_replace(EDH_tibble$longitude, pattern = "c\\(", replacement=""))
+```
+
+
+```{r}
+EDH_DM <- EDH_tibble %>% 
+  filter(!is.na(form_dis_manibus))
+
+getColor <- function(manibus) {
+  sapply(EDH_DM$form_dis_manibus, function(form_dis_manibus) {
+  if(form_dis_manibus == "d m") {
+    "green"
+  }
+    else if(form_dis_manibus == "d m s") {
+    "yellow"
+  } else if(form_dis_manibus == "dis manibus") {
+    "orange"
+  } else if(form_dis_manibus == "dis manibus sacrum") {
+    "red"
+  } else {
+    "grey"
+  } })
+}
+
+icons <- awesomeIcons(
+  icon = 'ios-close',
+  iconColor = 'black',
+  library = 'ion',
+  markerColor = getColor(df.20)
+)
+
+
+
+DM_map<- EDH_DM %>% 
+  leaflet(width="100%") %>%
+  #addProviderTiles("Stamen.Watercolor")%>% # Add CartoDB map tiles
+  addProviderTiles("Stamen.TerrainBackground")%>% # Add CartoDB map tiles
+  #addProviderTiles("Esri.WorldTopoMap", group = "Topo") %>%
+  #addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
+  setView( lng = 12.9239625, lat = 41.9515694, zoom = 3.5 ) %>%
+  #setMaxBounds(lat1=43.633977, lng1 =-11.227926 , lat2=35.133882 , lng2=50.882336) %>%
+  #addPolylines(data = roads, color = "purple", weight = 1, opacity = 0.7) %>% 
+  #addCircles(lng = EDH_tibble$longitude, 
+  #           lat = EDH_tibble$latitude, opacity = 0.1, radius = 1, fill = TRUE, color = "red" , fillColor = "red",
+  #           ) %>% 
+  addAwesomeMarkers(~EDH_tibble$longitude, ~EDH_tibble$latitude, icon=icons)) %>% 
+  addLegend(position = "bottomright",
+  colors = c("Red"),
+  labels = c("Findspot"), opacity = 1,
+  title = "Inscriptions with Dis Manibus formula" 
+) %>% 
+  addScaleBar(position="bottomleft")
+
+#DM_map
+```
+
+
 
 ## Hic Situs/Sita Est
 

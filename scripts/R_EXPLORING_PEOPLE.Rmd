@@ -28,11 +28,16 @@ library(jsonlite)
 library(leaflet)
 ```
 
-## Loading data
+## Loading data from Sciencedata.dk
 
 ```{r}
-getwd()
+list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
+EDH_tibble <- as_tibble(list_json)
+```
 
+
+## Loading data locally
+```{r}
 list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
 #dir.create("../figures")
@@ -318,7 +323,7 @@ EDH_unnested %>%
 EDH_unnested <- EDH_unnested %>%
   mutate(origo_clean = str_replace_all(origo, pattern="[\\*|\\+|\\?|\\!]", replacement="")) %>%
   mutate(origo_clean = str_replace_all(origo_clean, pattern="(\\w+) \\(= (\\w+)\\)", replacement="\\2")) %>%
-  mutate(origo_clean = str_replace_all(origo_clean, pattern="gente|genitus|gentis|natus|civis|Civis|civus|natione|nato|regione|domo|domu|cives|cive|civi|ex|verna", replacement="")) %>%
+  mutate(origo_clean = str_replace_all(origo_clean, pattern="gente|genitus|gentis|natus|civis|Civis|civus|natione|nato|regione|domo|domu|cives|cive|civi|ex|verna|tate", replacement="")) %>%
   mutate(origo_clean = str_replace_all(origo_clean, pattern="^ ", replacement="")) %>%
   mutate(origo_clean = str_replace_all(origo_clean, pattern="  ", replacement=" ")) 
 
@@ -326,7 +331,6 @@ EDH_unnested <- EDH_unnested %>%
 
 ```{r}
 EDH_unnested %>%
-  filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
   select(origo_clean, id) -> EDH_origo_out
 ```
 
@@ -335,9 +339,37 @@ EDH_unnested %>%
 write.csv(EDH_origo_out, "../data/EDH_origo_out.csv")
 ```
 
+### Further cleaning in Open Refine, loading its results
+```{r}
+origo_OR<-read.csv("../data/EDH_origo_in_OR.csv")
+```
 
 
+```{r}
+EDH_unnested <- cbind(EDH_unnested, origo_clean_OR = origo_OR$origo_clean)
+```
 
+### Saving the new dataset with clean origo to Sciencedata.dk
+
+```{r}
+#install.packages("Rtools")
+#install.packages("devtools")
+#install.packages("sdam")
+#devtools::install_github("sdam-au/sdam")
+library(sdam)
+```
+
+```{r}
+mycred_secret<- readLines("../../../../Desktop/mysecret.txt")
+
+EDH_unnested_json <- jsonlite::toJSON(EDH_unnested, auto_unbox = TRUE)
+jsonlite::write_json(EDH_unnested_json, path="../data/EDH_people_clean_origo_2021-08-11.json")
+
+sdam::request("../data/EDH_people_clean_origo_2021-08-11.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public", force = TRUE,
+        method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
+
+remove(mycred_secret)
+```
 
 
 ## Mapping inscriptions with origo
@@ -621,7 +653,7 @@ all_ages %>%
 ### Population pyramid in funerary inscriptions
 
 
-
+Adapted from https://klein.uk/teaching/viz/datavis-pyramids/
 
 ```{r}
 EDH_age %>% 
@@ -632,7 +664,7 @@ EDH_age %>%
   mutate(gender = str_replace(gender, "F\\?", "female")) -> population_age
 
 ## cut the age variable into age groups with 5-year intervals
-population_age$age_cut <- cut(population_age$total_age, breaks = seq(0, 100, 5), right = FALSE) 
+population_age$age_cut <- cut(population_age$total_age, breaks = seq(0, 160, 5), right = FALSE) 
 population_age$population <- 1 ## each sampled respondent represents 10 individuals
 
 
@@ -643,8 +675,12 @@ population_age <- aggregate(formula = population ~ gender + age_cut, data = popu
 population_age <- with(population_age, population_age[order(gender, age_cut),])
 
 #labels
-labels<- c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90-94", "95-99", "100-104", "105-109", "110-114", "115-119", "120-124", "125-129", "130-134", "135-139", "140-144", "145-149", "150-154", "155-159")
+labels<- as.factor(c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90-94", "95-99", "100-104", "105-109", "110-114", "115-119", "120-124", "125-129", "130-134", "135-139", "140-144", "145-149", "150-154", "155-159","160-164", "165-169", "170-174", "175-179", "180-184", "185-189", "190-194", "195-199"))
 labels_df <- as.data.frame(labels)
+
+## for simplicity, add the age group labels we used in popGHcens above
+#population_age$Age <- rep(unique(labels)[1:20], 2)
+
 
 population_age <- population_age %>% 
   mutate(age = str_replace(age_cut, "\\[", "")) %>% 
@@ -660,6 +696,7 @@ population_age$population <- ifelse(population_age$gender == "male", -1*populati
 pyramid_age <- ggplot(population_age, aes(x = age, y = population, fill = gender)) + 
   geom_bar(data = subset(population_age, gender == "female"), stat = "identity") +
   geom_bar(data = subset(population_age, gender == "male"), stat = "identity") + 
+  #scale_y_continuous(labels = c("250", "0", "250")) + 
   coord_flip()
 pyramid_age
 ```
