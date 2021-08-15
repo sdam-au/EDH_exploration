@@ -373,6 +373,7 @@ remove(mycred_secret)
 
 
 ## Mapping inscriptions with origo
+
 ```{r}
 EDH_unnested<- EDH_unnested %>% 
   separate(col = coordinates, into = c("longitude", "latitude"), sep = ",")
@@ -385,6 +386,8 @@ EDH_unnested$longitude <- as.numeric(str_replace(EDH_unnested$longitude, pattern
 EDH_unnested %>% 
   filter(!is.na(origo)) -> has_origo
 ```
+
+There are 2648 records that mention origo and have coordinates
 
 ```{r}
 library(raster)
@@ -476,6 +479,8 @@ epitaph %>%
 ggsave("../figures/Age_years_provinces.png", width = 8, height = 8) 
 ```
 
+I would like to see the inscription claiming 200 years of age. A typo? An ambitious guess?
+
 ### What is the average age of people on funerary inscriptions by province
 
 ```{r}
@@ -502,6 +507,8 @@ age_provinces %>%
   
 ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
 ```
+
+How do you know it is 7993 records?
 
 ### ### Average age by provinces, with more than 100 inscriptions containing age per province
 ```{r, fig.height=12}
@@ -552,16 +559,21 @@ EDH_age<- EDH_age %>%
 EDH_age$agegroup <- factor(EDH_age$agegroup, levels = c("0-2.99", "3-14.99","15-29.99", "30-39.99", "40-59.99","over 60"))  
 ```
 
+# test works
 ```{r}
+summary(EDH_age$total_age)
+summary(EDH_age$agegroup)
+```
 
 
+```{r}
 EDH_age %>% 
   filter(agegroup != "NA") %>%
   #count(agegroup, sort = TRUE) %>%
   #mutate(agegroup_sorted = reorder(agegroup, n)) %>% 
   ggplot() +
   geom_bar(mapping = aes(x = agegroup, fill = agegroup))+
-  labs(x = "Age group (years)", y = "Number of instances", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))
+  labs(x = "Age group (years)", y = "Number of individuals", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))
   #+ geom_label(aes(label = agegroup), colour = "black", fontface = "bold", hjust = -0.4)
   
 
@@ -664,43 +676,116 @@ EDH_age %>%
   mutate(gender = str_replace(gender, "F\\?", "female")) -> population_age
 
 ## cut the age variable into age groups with 5-year intervals
-population_age$age_cut <- cut(population_age$total_age, breaks = seq(0, 160, 5), right = FALSE) 
+population_age$age_cut <- cut(population_age$total_age, breaks = seq(0, 200, 5), right = FALSE) 
 population_age$population <- 1 ## each sampled respondent represents 10 individuals
-
-
-## aggregate the data by gender and age group
-population_age <- aggregate(formula = population ~ gender + age_cut, data = population_age, FUN = sum)
-
-## sort data by first by gender, then by age groups
-population_age <- with(population_age, population_age[order(gender, age_cut),])
-
-#labels
-labels<- as.factor(c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90-94", "95-99", "100-104", "105-109", "110-114", "115-119", "120-124", "125-129", "130-134", "135-139", "140-144", "145-149", "150-154", "155-159","160-164", "165-169", "170-174", "175-179", "180-184", "185-189", "190-194", "195-199"))
-labels_df <- as.data.frame(labels)
-
-## for simplicity, add the age group labels we used in popGHcens above
-#population_age$Age <- rep(unique(labels)[1:20], 2)
-
 
 population_age <- population_age %>% 
   mutate(age = str_replace(age_cut, "\\[", "")) %>% 
   mutate(age = str_replace(age, "\\)", "")) %>% 
   mutate(age = str_replace(age, "\\,", " - ")) 
+
+labels <- levels(population_age$age_cut) %>% 
+  stringr::str_replace_all(.,
+                                           c("\\[" = "",
+                                             "\\)" = "",
+                                             "\\," = " - "))
+  
+# Trying if setting age to factor will help with sorting
+class(population_age$age)
+population_age$age <- factor(population_age$age, levels=c(labels))
+
+# As a back up: create a new column from desired age intervals that lists the group number to be used for sorting
+population_age$order <- findInterval(population_age$total_age, c(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100, 500))
+
+
+sort(unique(population_age$order))
+head(population_age)
+population_age %>% 
+  filter(order == 4)
+
+## aggregate the data by gender and age group
+population_age <- aggregate(formula = population ~ gender + age + order, data = population_age, FUN = sum)
+
+## sort data by first by gender, then by age groups using *order*
+population_age <- with(population_age, population_age[order(order,gender),])
+
+#labels
+xabels<- c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90-94", "95-99", "100+")
+# labels_df <- as.data.frame(labels)
+# breaks = seq(0, 160, 5)
+
+# AS: the original is poorly annotated. None of the lines of code specified WHY it is run. 
+# Errors or problematic parts not clearly marked
+
   
 
-population_age <- population_age[,c("age","gender","population")]
+population_age <- population_age[,c("age","order", "gender","population")]
 
 population_age$population <- ifelse(population_age$gender == "male", -1*population_age$population, population_age$population)
 
+# It is incredible how the ggplot sort lexicographically despite the factor!!
 
-pyramid_age <- ggplot(population_age, aes(x = age, y = population, fill = gender)) + 
+
+population_age$orderedage <- reorder(population_age$age, sort(population_age$order)) #https://kohske.wordpress.com/2010/12/29/faq-how-to-order-the-factor-variables-in-ggplot2/
+
+
+pyramid_age <- ggplot(population_age, aes(x = orderedage, y = population, fill = gender)) + 
+  geom_bar(aes(order), data = subset(population_age, gender == "female"), stat = "identity") +
+  geom_bar(aes(order), data = subset(population_age, gender == "male"), stat = "identity") + 
+  #scale_y_continuous(labels = c("250", "0", "250")) + 
+  xlab("Age groups")+
+  scale_x_discrete(labels = xabels)+  # Still does not show!! But no Error. jeez.
+  coord_flip()
+pyramid_age
+```
+
+# Adela Different and Working (for change) Alternative
+```{r}
+EDH_age %>% 
+  dplyr::select(gender, total_age) %>% 
+  na.omit(gender) %>% 
+  na.omit(total_age)  %>% 
+  mutate(gender = str_replace(gender, "M\\?", "male")) %>% 
+  mutate(gender = str_replace(gender, "F\\?", "female")) -> population_age
+
+
+# The column plotted on x (and flipped) needs to be a factor, but the example above is not working, 
+# so lets' cut and label data with data.table library
+library(data.table)
+
+agebreaks <- c(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100, 500)
+agelabels <- c("0-4","5-9","10-14","15-19","20-24","25-29","30-34",
+               "35-39","40-44","45-49","50-54","55-59","60-64","65-69",
+               "70-74","75-79","80-84","85-89","90-94", "95-99","100+")
+## cut the age variable into age groups with 5-year intervals
+
+setDT(population_age)[ , agegroups := cut(total_age, 
+                                breaks = agebreaks, 
+                                right = FALSE, 
+                                labels = agelabels)]
+
+head(population_age)
+
+population_age$population <- 1 ## each sampled respondent represents 10 individuals
+
+# aggregate the data by gender and age group
+population_age <- aggregate(formula = population ~ gender + agegroups, data = population_age, FUN = sum)
+
+## sort data by first by gender, then by age groups
+population_age <- with(population_age, population_age[order(agegroups,gender),])
+
+
+population_age <- population_age[,c("agegroups","gender","population")]
+
+population_age$population <- ifelse(population_age$gender == "male", -1*population_age$population, population_age$population)
+
+pyramid_age <- ggplot(population_age, aes(x = agegroups, y = population, fill = gender)) + 
   geom_bar(data = subset(population_age, gender == "female"), stat = "identity") +
   geom_bar(data = subset(population_age, gender == "male"), stat = "identity") + 
   #scale_y_continuous(labels = c("250", "0", "250")) + 
   coord_flip()
 pyramid_age
 ```
-
 
 
 ### Average age by individual years 
