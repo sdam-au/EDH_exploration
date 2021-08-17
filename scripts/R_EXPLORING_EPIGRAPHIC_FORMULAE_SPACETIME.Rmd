@@ -1,0 +1,165 @@
+---
+title: "Different Hawkes"
+author: "Adela Sobotkova"
+date: "16/08/2021"
+output: html_document
+---
+## Initial setup
+
+## Setup of the environment:
+
+```{r setup, echo=TRUE, message=FALSE, warning = FALSE}
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+library(tidyverse)
+library(jsonlite)
+```
+
+## Guidelines for use
+This script begins with the subsetting of the EDH_dis_manibus.json (11670x77) file down to the sample of inscriptions containing the Dis Manibus formula found in Spain. This is for easier temporal and spatial modelling. These filtering steps are recorded for reproducibility (and marked eval=false to prevent accidental reruns.
+
+If interested in the spatio-temporal analysis, skip to line where you can read in the available EDH_DM_Spain csv. 
+
+## Loading data from Sciencedata.dk or local data folder 
+Only use this if you need the original raw dataset (it is a sizable file ~300mb)
+```{r, eval = false}
+list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_dis_manibus_2021-08-12.json")
+list_json <- jsonlite::fromJSON("../data/EDH_dis_manibus_2021-08-12.json")
+EDH_DM <- as_tibble(list_json)
+```
+
+## Display the Spanish subset of DM records
+```{r, eval = false}
+# The original dataset is 11670 x 77 large, we need a simpler one
+dim(EDH_DM)
+
+# Cut columns to the essential ones
+EDH_DMf <- EDH_DM %>% 
+  select(id, not_before, not_after, longitude,latitude, people, type_of_monument,country, text_edition, type_of_monument_clean, type_of_inscription_clean,  country_clean,clean_text_interpretive_word, clean_text_interpretive_word_lowercase,clean_text_interpretive_sentence, form_dis_manibus)
+
+DM_Spain <- EDH_DMf %>% 
+  filter(country_clean == "Spain") %>% 
+  select(-people) %>% 
+  filter(!is.na(longitude))# lists are always an issue in spatial viz, so eliminating for now
+
+write_csv(DM_Spain, "../data/EDH_DM_Spain.csv")
+```
+
+## Playing with time 
+Hawkes usually expects time or date (YYYY-MM-DD) for calculations, so this is an exploration of 'what might work'?
+```{r}
+# Load the smaller sample dataset of DIS MANIBUS inscriptions from Spain
+DM_Spain <- read_csv("../data/EDH_DM_Spain.csv")
+
+# check the coordinates are numeric and non-missing
+class(DM_Spain$latitude)
+class(DM_Spain$longitude)
+
+# does it look like Spain?
+ggplot(DM_Spain, aes(x = longitude, y = latitude)) +
+  geom_point()
+
+# lots of messy dates in not_before column, which denotes the earliest date of creation
+unique(DM_Spain$not_before)
+       
+# if you need yyyy/mm/dd, use this script (but you lose BC dates)       
+DM_Spain <- DM_Spain %>% 
+  filter(not_before != "-0030") %>% 
+  filter(not_before != "-0050") %>% 
+  filter(!is.na(not_before))
+DM_Spain$dates <- paste0("1/1/",DM_Spain$not_before)
+
+# maybe years will suffice if made numeric
+DM_Spain <- DM_Spain %>% 
+  filter(not_before != "-0030") %>% 
+  filter(not_before != "-0050") %>% 
+  filter(!is.na(not_before))
+DM_Spain$t <- as.numeric(DM_Spain$not_before)
+unique(DM_Spain$t)
+
+# Make the 4 versions of Dis Manibus formula into a mark so we can check if these different versions impact one another or have different diffusion trajectories
+
+unique(DM_Spain$form_dis_manibus)
+DM_Spain$m <- factor(DM_Spain$form_dis_manibus, levels = c("dis manibus sacrum","dis manibus","d m", "d m s"))
+levels(DM_Spain$m) <- c(1,2,3,4)
+class(DM_Spain$m)
+```
+
+
+## Get nphawkes package from P Boyde
+https://www.youtube.com/watch?v=lFhAQp8LHg4 
+
+What is the Hawkes process? It is a so-called self-exciting process in which the occurrence of a point temporarily elevates surrounding points. It is useful for cascading chains of events such as epidemics, social media memes, or stockexchange devaluations.  The assumption is that random background events spawn/trigger non-random children events in their (spatial?) vicinity.
+ 
+In terms of probability: A Hawkes process (Hawkes, 1971; Liniger, 2009) supposes that past events can temporarily raise the probability of future events, assuming that such excitation is (1) positive, (2) additive over the past events, and (3) exponentially decaying with time.
+
+```{r}
+install.packages("devtools")
+devtools::install_github("boydpe/nphawkes")
+library(nphawkes)
+?misd()
+```
+
+```{r}
+# Trial run according to the documentation
+data("hm.csv")
+out = misd(dates = hm$t,
+   ref_date = "1999-10-16",
+   lat = hm$lat,
+   lon = hm$lon,
+   marks = hm$m,
+   time_breaks = c(0,0.1, 0.5, 1,7,93,600),
+   space_breaks = c(0,0.5, 1, 10, 25, 100),
+   mark_breaks = c(3, 3.1,3.3, 4, 5, 8),
+   just_times = T)
+out
+plot(out$time_bins)
+```
+
+## Run MISD function on DIS MANIBUS dataset from Spain
+
+```{r}
+outDM <- misd(dates = DM_Spain$t,
+            lat = DM_Spain$latitude,
+            lon = DM_Spain$longitude,
+            marks = as.numeric(DM_Spain$m))
+
+# Let's look at inscription frequency through time
+plot(table(DM_Spain$not_before))
+
+# Now what does the Hawkes model actually show? 
+hist(outDM$data$parent)
+plot(outDM$g)
+
+# How do I know which are the probably parents and which are the children events?
+
+# What is the effect of the marks? (in our case the marks denote the different spellings of DIS MANIBUS which can reflect wealth and prestige of the commissioner)
+
+# Are the spatial locations taken into account?
+```
+
+
+
+# Hawkes from Peter Halpin
+```{r}
+devtools::install_github("peterhalpin/hawkes")
+library(hawkes)
+head(email)
+pp_obj <- pp(email)
+print(pp_obj)
+
+plot(pp_obj) # does not work (list of events by employer/employee)
+gof(pp_obj)
+```
+
+# Simulate
+```{r}
+
+hawkes_em <- EM(pp_obj,nstarts = 1, maxit = 3)
+hawkes_em
+
+parms <- get_parms(hawkes_em)
+gof(pp_obj, parms)
+
+```
+
