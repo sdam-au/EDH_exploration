@@ -1,5 +1,5 @@
 ---
-title: "Different Hawkes"
+title: "Exploring Space and Time with the Hawkes process"
 author: "Adela Sobotkova"
 date: "16/08/2021"
 output: html_document
@@ -15,11 +15,12 @@ library(tidyverse)
 library(jsonlite)
 ```
 
-## Guidelines for use
+# Guidelines for use
 This script begins with the subsetting of the EDH_dis_manibus.json (11670x77) file down to the sample of inscriptions containing the Dis Manibus formula found in Spain. This is for easier temporal and spatial modelling. These filtering steps are recorded for reproducibility (and marked eval=false to prevent accidental reruns.
 
 If interested in the spatio-temporal analysis, skip to line where you can read in the available EDH_DM_Spain csv. 
 
+# Prepare the Data
 ## Loading data from Sciencedata.dk or local data folder 
 Only use this if you need the original raw dataset (it is a sizable file ~300mb)
 ```{r, eval = false}
@@ -28,7 +29,7 @@ list_json <- jsonlite::fromJSON("../data/EDH_dis_manibus_2021-08-12.json")
 EDH_DM <- as_tibble(list_json)
 ```
 
-## Display the Spanish subset of DM records
+## Spanish subset of DIS MANIBUS records
 ```{r, eval = false}
 # The original dataset is 11670 x 77 large, we need a simpler one
 dim(EDH_DM)
@@ -86,8 +87,9 @@ class(DM_Spain$m)
 ```
 
 
-## Get nphawkes package from P Boyde
-https://www.youtube.com/watch?v=lFhAQp8LHg4 
+# Analysis I
+## Trying to use nphawkes package from P Boyde
+credits: https://www.youtube.com/watch?v=lFhAQp8LHg4 
 
 What is the Hawkes process? It is a so-called self-exciting process in which the occurrence of a point temporarily elevates surrounding points. It is useful for cascading chains of events such as epidemics, social media memes, or stockexchange devaluations.  The assumption is that random background events spawn/trigger non-random children events in their (spatial?) vicinity.
  
@@ -116,7 +118,7 @@ out
 plot(out$time_bins)
 ```
 
-## Run MISD function on DIS MANIBUS dataset from Spain
+## Run nphawkes::misd function on DIS MANIBUS dataset from Spain
 
 ```{r}
 outDM <- misd(dates = DM_Spain$t,
@@ -130,17 +132,22 @@ plot(table(DM_Spain$not_before))
 # Now what does the Hawkes model actually show? 
 hist(outDM$data$parent)
 plot(outDM$g)
-
-# How do I know which are the probably parents and which are the children events?
-
-# What is the effect of the marks? (in our case the marks denote the different spellings of DIS MANIBUS which can reflect wealth and prestige of the commissioner)
-
-# Are the spatial locations taken into account?
 ```
 
+## Questions for nphawkes
+
+How do I know which are the probably parents and which are the children events?
+
+What is the effect of the marks? (in our case the marks denote the different spellings of DIS MANIBUS which can reflect wealth and prestige of the commissioner)
+
+Are the spatial locations taken into account? How?
 
 
-# Hawkes from Peter Halpin
+
+# Analysis II
+## Explore Hawkes package from Peter Halpin
+credits: http://htmlpreview.github.io/?https://github.com/peterhalpin/hawkes/blob/master/hawkes_eg.html
+
 ```{r}
 devtools::install_github("peterhalpin/hawkes")
 library(hawkes)
@@ -152,7 +159,7 @@ plot(pp_obj) # does not work (list of events by employer/employee)
 gof(pp_obj)
 ```
 
-# Simulate
+### Simulate
 ```{r}
 
 hawkes_em <- EM(pp_obj,nstarts = 1, maxit = 3)
@@ -163,3 +170,9 @@ gof(pp_obj, parms)
 
 ```
 
+... To Be Continued
+
+# Inspirational (visual) ppts and papers divulged by Google upon a quick search..
+https://insurancedatascience.org/downloads/Zurich2019/Session4/3_Boumezoued_Alexandre.pdf
+https://www.degruyter.com/document/doi/10.1515/phys-2020-0002/html
+https://export.arxiv.org/pdf/2003.03671
