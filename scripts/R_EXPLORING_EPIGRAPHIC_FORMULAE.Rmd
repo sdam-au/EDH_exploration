@@ -101,11 +101,35 @@ Creating new attribute with the separated formula
 ```{r}
 EDH_tibble<- EDH_tibble %>% 
   mutate(form_dis_manibus = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex))
-
 ```
 
+
+Saving to sciencedata
+```{r}
+#install.packages("Rtools")
+#install.packages("devtools")
+#install.packages("sdam")
+devtools::install_github("sdam-au/sdam")
+library(sdam)
+```
+
+```{r}
+mycred_secret<- readLines("../../../../Desktop/mysecret.txt")
+
+EDH_tibble_json <- jsonlite::toJSON(EDH_tibble, auto_unbox = TRUE)
+jsonlite::write_json(EDH_tibble_json, path="../data/EDH_dis_manibus_2021-08-12.json")
+
+sdam::request("../data/EDH_dis_manibus_2021-08-12.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public", force = TRUE,
+        method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
+
+remove(mycred_secret)
+```
+
+
+
+
 Count by type of formula and province
-```{r, fig.height=12}
+```{r, fig.height=10}
 EDH_tibble %>% 
   filter(!is.na(form_dis_manibus)) %>% 
   #count(province_label_clean, form_dis_manibus, sort=T) %>% 
