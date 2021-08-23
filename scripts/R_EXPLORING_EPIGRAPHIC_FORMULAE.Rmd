@@ -104,6 +104,15 @@ EDH_tibble<- EDH_tibble %>%
 ```
 
 
+```{r}
+# capturing context - 5 words before the formula and 5 words after the formula
+EDH_tibble<- EDH_tibble %>% 
+  mutate(dis_manibus_in_context40 = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, "(\\w*\\s){1,6}\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus(\\w*\\s){1,6}")) 
+```
+
+
+
+
 Saving to sciencedata
 ```{r}
 #install.packages("Rtools")
@@ -263,4 +272,163 @@ Hic requiescit in pace
 Requievit 
 
 full list https://www.trismegistos.org/abb/detail.php?id=64741
+
+
+
+# Measuring similarity of formulae
+
+```{r}
+length(unique(EDH_DM$clean_text_interpretive_word_lowercase))
+
+```
+
+Testing on smaller dataset
+
+```{r}
+install.packages("stringdist") # http://amunategui.github.io/stringdist/
+library(stringdist)
+
+# smaller dataset
+EDH100<- head(EDH_DM, 100)
+
+# first 50 characters of the text of an inscription
+EDH100<- EDH100 %>% 
+  mutate(text50 = substr(EDH100$clean_text_interpretive_word_lowercase, 1,50))
+
+# Damerau-Levenshtein method - allows for substitution, deletion, insertion and transposition of individual characters
+
+dl_distance<- stringdistmatrix(EDH100$dis_manibus_in_context40, EDH100$dis_manibus_in_context40, method= "dl")
+table(dl_distance)
+
+dl_distance
+
+
+# renaming rows and columns
+
+idnames <- unique(as.character(EDH100$id))
+rownames(dl_distance) <- idnames
+colnames(dl_distance) <- idnames
+
+
+#insctext <- unique(as.character(EDH100$dis_manibus_in_context40))
+#rownames(dl_distance) <- insctext
+#colnames(dl_distance) <- insctext
+
+
+# Clustering the distance results in a dendrogram
+
+hc <- hclust(as.dist(dl_distance))
+plot(hc)
+rect.hclust(hc,k=3)
+
+```
+```{r}
+# clustering in dataframe to groups
+
+dfClust <- data.frame(idnames, cutree(hc, k=3))
+names(dfClust) <- c("id", "cluster")
+
+plot(table(dfClust$cluster))
+print(paste('Average number of ids per cluster:', mean(table(dfClust$cluster))))
+
+```
+
+```{r}
+# orders the data by cluster size
+t <- table(dfClust$cluster)
+t <- cbind(t,t/length(dfClust$cluster))
+t <- t[order(t[,2], decreasing=TRUE),]
+p <- data.frame(factorName=rownames(t), binCount=t[,1], percentFound=t[,2])
+dfClust <- merge(x=dfClust, y=p, by.x = 'cluster', by.y='factorName', all.x=T)
+dfClust <- dfClust[rev(order(dfClust$binCount)),]
+names(dfClust) <-  c('cluster','id')
+head(dfClust[c('cluster','id')],100)
+
+
+left_join(EDH100, dfClust[1:2], by=c("id"="id"))
+```
+
+
+
+
+
+
+```{r}
+#https://www.require-r.com/post/2019/levenshtein/
+
+
+# trying to filter the most similar inscriptions
+
+pos_min <- apply(dl_distance, 1, which.min)
+dist_min_row <- apply(dl_distance, 1, min)
+dist_min_col <- apply(dl_distance, 2, min)
+max_length <- pmax(nchar(EDH100$clean_text_interpretive_word_lowercase))
+
+
+dist_min_row
+which(dl_distance == min(dl_distance), arr.ind = TRUE)
+
+EDH100[49,78]
+EDH100[70,78]
+```
+
+
+```{r}
+dis_manibus_regex <- "\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus"
+
+dis_manibus<- str_subset(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex)
+
+EDH_tibble %>% 
+  filter(clean_text_interpretive_word_lowercase %in% dis_manibus) %>% 
+  dplyr::select(clean_text_interpretive_word)
+
+EDH_tibble<- EDH_tibble %>% 
+  mutate(dis_manibus_in_context40 = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, "(\\w*\\s){1,6}\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus(\\w*\\s){1,6}")) 
+```
+
+
+
+Random data
+
+```{r}
+rawnames <- c("E. G. McGirr", "E. G. MacGirr", "Ellen Thompson", "Elen Thomson",
+              "John Doe")
+
+library("stringdist")
+m <- stringdistmatrix(rawnames, rawnames, method = "dl")
+m
+rownames(m) <- rawnames
+colnames(m) <- rawnames
+m[!upper.tri(m)] <- NA
+m
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Textreuse package https://lincolnmullen.com/software/textreuse/
+
+
+install.packages("textreuse")
+```
 
