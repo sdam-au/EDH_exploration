@@ -203,8 +203,8 @@ DM_map<- #head(EDH_DM, 100) %>%
   
   #addAwesomeMarkers(~EDH_tibble$longitude, ~EDH_tibble$latitude, icon=icons) %>% 
   addLegend(position = "bottomright",
-  colors = c("Blue", "Black", "Red", "Orange", "Yellow", "Green"),
-  labels = c("dis manibus sacrum", "diis manibus sacrum", "dis manibus", "diis manibus", "d m s", "d m"), opacity = 1,
+  colors = c("Blue", "Black", "Green", "Red", "Orange", "Yellow"),
+  labels = c("dis manibus", "diis manibus", "d m", "dis manibus sacrum", "diis manibus sacrum", "d m s"), opacity = 1,
   title = "Dis Manibus formula (EDH)" 
 ) %>% 
   addScaleBar(position="bottomleft")
@@ -233,7 +233,7 @@ Testing on smaller dataset
 library(stringdist)
 
 # smaller dataset
-EDH100<- head(EDH_DM, 100)
+EDH100<- head(EDH_DM, 500)
 
 # Damerau-Levenshtein method - allows for substitution, deletion, insertion and transposition of individual characters
 
@@ -260,7 +260,7 @@ colnames(dl_distance) <- idnames
 hc <- hclust(as.dist(dl_distance), method = "complete")
 
 plot(hc, main ="Clustering of 'Dis Manibus' inscriptions", xlab="Clusters")
-rect.hclust(hc, k=3)
+rect.hclust(hc, k=5)
 
 ```
 
