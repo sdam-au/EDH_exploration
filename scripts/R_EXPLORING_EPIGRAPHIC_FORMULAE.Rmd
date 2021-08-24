@@ -83,7 +83,7 @@ table(str_count(EDH_tibble$clean_text_interpretive_word, "d m"))
 
 Searching for all *typical* variants of the formula
 ```{r}
-dis_manibus_regex <- "\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus"
+dis_manibus_regex <- "\\bd m s\\b|\\bd m\\b|di{1,2}s manibus sacrum|di{1,2}s manibus"
 
 dis_manibus<- str_subset(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex)
 
@@ -107,32 +107,13 @@ EDH_tibble<- EDH_tibble %>%
 ```{r}
 # capturing context - 5 words before the formula and 5 words after the formula
 EDH_tibble<- EDH_tibble %>% 
-  mutate(dis_manibus_in_context40 = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, "(\\w*\\s){1,6}\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus(\\w*\\s){1,6}")) 
+  mutate(dis_manibus_in_context_10w = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, "(\\w*\\s){1,6}\\bd m s\\b|\\bd m\\b|di{1,2}s manibus sacrum|di{1,2}s manibus(\\w*\\s){1,6}")) 
 ```
 
 
 
 
-Saving to sciencedata
-```{r}
-#install.packages("Rtools")
-#install.packages("devtools")
-#install.packages("sdam")
-devtools::install_github("sdam-au/sdam")
-library(sdam)
-```
 
-```{r}
-mycred_secret<- readLines("../../../../Desktop/mysecret.txt")
-
-EDH_tibble_json <- jsonlite::toJSON(EDH_tibble, auto_unbox = TRUE)
-jsonlite::write_json(EDH_tibble_json, path="../data/EDH_dis_manibus_2021-08-12.json")
-
-sdam::request("../data/EDH_dis_manibus_2021-08-12.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public", force = TRUE,
-        method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
-
-remove(mycred_secret)
-```
 
 
 
@@ -164,33 +145,6 @@ EDH_tibble$longitude <- as.numeric(str_replace(EDH_tibble$longitude, pattern = "
 ```
 
 
-```{r}
-#icons colorschemes
-getColor <- function(manibus) {
-  sapply(EDH_DM$form_dis_manibus, function(form_dis_manibus) {
-  if(form_dis_manibus == "d m") {
-    "green"
-  }
-    else if(form_dis_manibus == "d m s") {
-    "yellow"
-  } else if(form_dis_manibus == "dis manibus") {
-    "orange"
-  } else if(form_dis_manibus == "dis manibus sacrum") {
-    "red"
-  } else {
-    "grey"
-  } })
-}
-
-icons <- awesomeIcons(
-  icon = 'ios-close',
-  iconColor = 'black',
-  library = 'ion',
-  markerColor = getColor(df.20)
-)
-```
-
-
 
 ```{r}
 #non-empty dis manibus attribute
@@ -201,9 +155,17 @@ EDH_DM <- EDH_tibble %>%
 EDH_dis_manibus <- EDH_DM %>% 
   filter(form_dis_manibus == "dis manibus")
 
+# diis manibus formula
+EDH_diis_manibus <- EDH_DM %>% 
+  filter(form_dis_manibus == "diis manibus")
+
 # dis manibus sacrum formula
 EDH_dis_manibus_sacrum <- EDH_DM %>% 
   filter(form_dis_manibus == "dis manibus sacrum")
+
+# diis manibus sacrum formula
+EDH_diis_manibus_sacrum <- EDH_DM %>% 
+  filter(form_dis_manibus == "diis manibus sacrum")
 
 #abbreviated dis manibus formula
 EDH_d_m <- EDH_DM %>% 
@@ -213,7 +175,8 @@ EDH_d_m <- EDH_DM %>%
 EDH_d_m_s <- EDH_DM %>% 
   filter(form_dis_manibus == "d m s")
 
-DM_map<- head(EDH_DM, 100) %>% 
+DM_map<- #head(EDH_DM, 100) %>% 
+  leaflet(EDH_DM) %>% 
   leaflet(width="100%") %>%
   #addProviderTiles("Stamen.Watercolor")%>% # Add CartoDB map tiles
   addProviderTiles("Stamen.TerrainBackground")%>% # Add CartoDB map tiles
@@ -224,20 +187,25 @@ DM_map<- head(EDH_DM, 100) %>%
   #addPolylines(data = roads, color = "purple", weight = 1, opacity = 0.7) %>% 
   
   addCircles(lng = EDH_dis_manibus$longitude, 
-             lat = EDH_dis_manibus$latitude, opacity = 0.1, radius = 1, fill = T , color = "blue" , fillColor = "blue",) %>%
+             lat = EDH_dis_manibus$latitude, opacity = 0.3, radius = 1, fill = T , color = "blue" , fillColor = "blue",) %>%
   addCircles(lng = EDH_dis_manibus_sacrum$longitude, 
-             lat = EDH_dis_manibus_sacrum$latitude, opacity = 0.1, radius = 1, fill = T , color = "red" , fillColor = "red",) %>%
+             lat = EDH_dis_manibus_sacrum$latitude, opacity = 0.3, radius = 1, fill = T , color = "red" , fillColor = "red",) %>%
+  
+  addCircles(lng = EDH_diis_manibus$longitude, 
+             lat = EDH_diis_manibus$latitude, opacity = 0.3, radius = 1, fill = T , color = "black" , fillColor = "black",) %>%
+  addCircles(lng = EDH_diis_manibus_sacrum$longitude, 
+             lat = EDH_diis_manibus_sacrum$latitude, opacity = 0.3, radius = 1, fill = T , color = "orange" , fillColor = "orange",) %>%
   addCircles(lng = EDH_d_m_s$longitude, 
-             lat = EDH_d_m_s$latitude, opacity = 0.1, radius = 1, fill = T , color = "yellow" , fillColor = "yellow",)  %>% 
+             lat = EDH_d_m_s$latitude, opacity = 0.3, radius = 1, fill = T , color = "yellow" , fillColor = "yellow",)  %>% 
   addCircles(lng = EDH_d_m$longitude, 
-             lat = EDH_d_m$latitude, opacity = 0.1, radius = 1, fill = T , color = "orange" , fillColor = "orange",) %>% 
+             lat = EDH_d_m$latitude, opacity = 0.3, radius = 1, fill = T , color = "green" , fillColor = "green",) %>% 
 
   
   #addAwesomeMarkers(~EDH_tibble$longitude, ~EDH_tibble$latitude, icon=icons) %>% 
   addLegend(position = "bottomright",
-  colors = c("Red", "Blue", "Orange", "Yellow"),
-  labels = c("dis manibus sacrum", "dis manibus", "d m", "d m s"), opacity = 1,
-  title = "Dis Manibus formula on inscriptions (EDH)" 
+  colors = c("Blue", "Black", "Red", "Orange", "Yellow", "Green"),
+  labels = c("dis manibus sacrum", "diis manibus sacrum", "dis manibus", "diis manibus", "d m s", "d m"), opacity = 1,
+  title = "Dis Manibus formula (EDH)" 
 ) %>% 
   addScaleBar(position="bottomleft")
 
@@ -245,6 +213,204 @@ DM_map
 ```
 
 
+# Temporal overview
+
+in a separate script > `R_dis_manibus_temporal.Rmd` within the same repo.
+
+
+
+# Measuring similarity of formulae
+
+```{r}
+length(unique(EDH_DM$clean_text_interpretive_word_lowercase))
+
+```
+
+Testing on smaller dataset
+
+```{r}
+#install.packages("stringdist") # http://amunategui.github.io/stringdist/
+library(stringdist)
+
+# smaller dataset
+EDH100<- head(EDH_DM, 100)
+
+# Damerau-Levenshtein method - allows for substitution, deletion, insertion and transposition of individual characters
+
+dl_distance<- stringdistmatrix(EDH100$dis_manibus_in_context_10w, EDH100$dis_manibus_in_context_10w, method= "dl")
+table(dl_distance)
+
+dl_distance
+
+
+# renaming rows and columns
+
+idnames <- unique(as.character(EDH100$id))
+rownames(dl_distance) <- idnames
+colnames(dl_distance) <- idnames
+
+
+#insctext <- unique(as.character(EDH100$dis_manibus_in_context40))
+#rownames(dl_distance) <- insctext
+#colnames(dl_distance) <- insctext
+
+
+# Clustering the distance results in a dendrogram
+
+hc <- hclust(as.dist(dl_distance), method = "complete")
+
+plot(hc, main ="Clustering of 'Dis Manibus' inscriptions", xlab="Clusters")
+rect.hclust(hc, k=3)
+
+```
+
+As radial network
+```{r}
+#install.packages("networkD3")
+library(networkD3)
+
+radialNetwork(as.radialNetwork(hc))
+```
+
+
+
+Graph 
+```{r}
+#install.packages("ape")
+library(ape)
+
+# convert 'hclust' to 'phylo' object
+phylo_tree <- as.phylo(hc)
+
+# get edges
+graph_edges <- phylo_tree$edge
+
+# library igraph
+#install.packages("igraph")
+library(igraph)
+
+# get graph from edge list
+graph_net <- graph.edgelist(graph_edges)
+
+# plot graph
+plot(graph_net)
+
+```
+
+
+```{r}
+# clustering in dataframe to groups
+
+dfClust <- data.frame(idnames, cutree(hc, k=10))
+names(dfClust) <- c("id", "cluster")
+
+plot(table(dfClust$cluster))
+print(paste('Average number of ids per cluster:', mean(table(dfClust$cluster))))
+
+```
+
+```{r}
+# orders the data by cluster size
+t <- table(dfClust$cluster)
+t <- cbind(t,t/length(dfClust$cluster))
+t <- t[order(t[,2], decreasing=TRUE),]
+p <- data.frame(factorName=rownames(t), binCount=t[,1], percentFound=t[,2])
+dfClust <- merge(x=dfClust, y=p, by.x = 'cluster', by.y='factorName', all.x=T)
+dfClust <- dfClust[rev(order(dfClust$binCount)),]
+names(dfClust) <-  c('cluster','id')
+head(dfClust[c('cluster','id')],100)
+
+```
+
+```{r}
+EDH100 <- left_join(EDH100, dfClust[1:2], by=c("id"="id"))
+EDH100[77:79]
+```
+
+
+```{r}
+EDH100 %>% 
+  select(id, latitude, longitude, form_dis_manibus, cluster)
+  
+```
+
+```{r}
+EDH100 %>% 
+  select(dis_manibus_in_context_10w, cluster) %>% 
+  filter(cluster == 2)
+```
+
+
+
+
+
+
+```{r}
+#https://www.require-r.com/post/2019/levenshtein/
+
+
+# trying to filter the most similar inscriptions
+
+pos_min <- apply(dl_distance, 1, which.min)
+dist_min_row <- apply(dl_distance, 1, min)
+dist_min_col <- apply(dl_distance, 2, min)
+max_length <- pmax(nchar(EDH100$clean_text_interpretive_word_lowercase))
+
+
+dist_min_row
+which(dl_distance == min(dl_distance), arr.ind = TRUE)
+
+EDH100[49,78]
+EDH100[70,78]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Saving the dataset to sciencedata
+```{r}
+#install.packages("Rtools")
+#install.packages("devtools")
+#install.packages("sdam")
+devtools::install_github("sdam-au/sdam")
+library(sdam)
+```
+
+```{r}
+mycred_secret<- readLines("../../../../Desktop/mysecret.txt")
+
+EDH_tibble_json <- jsonlite::toJSON(EDH_tibble, auto_unbox = TRUE)
+jsonlite::write_json(EDH_tibble_json, path="../data/EDH_dis_manibus_2021-08-24.json")
+
+sdam::request("../data/EDH_dis_manibus_2021-08-24.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public", force = TRUE,
+        method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
+
+remove(mycred_secret)
+```
+
+
+
+
+
+```{r}
+# Textreuse package https://lincolnmullen.com/software/textreuse/
+
+#install.packages("textreuse")
+```
+
+# Other formulae 
 
 ## Hic Situs/Sita Est
 
@@ -275,160 +441,5 @@ full list https://www.trismegistos.org/abb/detail.php?id=64741
 
 
 
-# Measuring similarity of formulae
 
-```{r}
-length(unique(EDH_DM$clean_text_interpretive_word_lowercase))
-
-```
-
-Testing on smaller dataset
-
-```{r}
-install.packages("stringdist") # http://amunategui.github.io/stringdist/
-library(stringdist)
-
-# smaller dataset
-EDH100<- head(EDH_DM, 100)
-
-# first 50 characters of the text of an inscription
-EDH100<- EDH100 %>% 
-  mutate(text50 = substr(EDH100$clean_text_interpretive_word_lowercase, 1,50))
-
-# Damerau-Levenshtein method - allows for substitution, deletion, insertion and transposition of individual characters
-
-dl_distance<- stringdistmatrix(EDH100$dis_manibus_in_context40, EDH100$dis_manibus_in_context40, method= "dl")
-table(dl_distance)
-
-dl_distance
-
-
-# renaming rows and columns
-
-idnames <- unique(as.character(EDH100$id))
-rownames(dl_distance) <- idnames
-colnames(dl_distance) <- idnames
-
-
-#insctext <- unique(as.character(EDH100$dis_manibus_in_context40))
-#rownames(dl_distance) <- insctext
-#colnames(dl_distance) <- insctext
-
-
-# Clustering the distance results in a dendrogram
-
-hc <- hclust(as.dist(dl_distance))
-plot(hc)
-rect.hclust(hc,k=3)
-
-```
-```{r}
-# clustering in dataframe to groups
-
-dfClust <- data.frame(idnames, cutree(hc, k=3))
-names(dfClust) <- c("id", "cluster")
-
-plot(table(dfClust$cluster))
-print(paste('Average number of ids per cluster:', mean(table(dfClust$cluster))))
-
-```
-
-```{r}
-# orders the data by cluster size
-t <- table(dfClust$cluster)
-t <- cbind(t,t/length(dfClust$cluster))
-t <- t[order(t[,2], decreasing=TRUE),]
-p <- data.frame(factorName=rownames(t), binCount=t[,1], percentFound=t[,2])
-dfClust <- merge(x=dfClust, y=p, by.x = 'cluster', by.y='factorName', all.x=T)
-dfClust <- dfClust[rev(order(dfClust$binCount)),]
-names(dfClust) <-  c('cluster','id')
-head(dfClust[c('cluster','id')],100)
-
-
-left_join(EDH100, dfClust[1:2], by=c("id"="id"))
-```
-
-
-
-
-
-
-```{r}
-#https://www.require-r.com/post/2019/levenshtein/
-
-
-# trying to filter the most similar inscriptions
-
-pos_min <- apply(dl_distance, 1, which.min)
-dist_min_row <- apply(dl_distance, 1, min)
-dist_min_col <- apply(dl_distance, 2, min)
-max_length <- pmax(nchar(EDH100$clean_text_interpretive_word_lowercase))
-
-
-dist_min_row
-which(dl_distance == min(dl_distance), arr.ind = TRUE)
-
-EDH100[49,78]
-EDH100[70,78]
-```
-
-
-```{r}
-dis_manibus_regex <- "\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus"
-
-dis_manibus<- str_subset(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex)
-
-EDH_tibble %>% 
-  filter(clean_text_interpretive_word_lowercase %in% dis_manibus) %>% 
-  dplyr::select(clean_text_interpretive_word)
-
-EDH_tibble<- EDH_tibble %>% 
-  mutate(dis_manibus_in_context40 = str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, "(\\w*\\s){1,6}\\bd m s\\b|\\bd m\\b|dis manibus sacrum|dis manibus(\\w*\\s){1,6}")) 
-```
-
-
-
-Random data
-
-```{r}
-rawnames <- c("E. G. McGirr", "E. G. MacGirr", "Ellen Thompson", "Elen Thomson",
-              "John Doe")
-
-library("stringdist")
-m <- stringdistmatrix(rawnames, rawnames, method = "dl")
-m
-rownames(m) <- rawnames
-colnames(m) <- rawnames
-m[!upper.tri(m)] <- NA
-m
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-# Textreuse package https://lincolnmullen.com/software/textreuse/
-
-
-install.packages("textreuse")
-```
 
