@@ -1,8 +1,15 @@
 ---
-title: "Using Python function in R"
+title: "Dis manibus in space and time"
 author: "Petra Hermankova"
-date: "12/03/2021"
-output: html_document
+date: "24/08/2021"
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_float: true
+    number_sections: true
+    toc_depth: 2
+    df_print: paged
 ---
 
 ```{r}
@@ -198,7 +205,6 @@ EDH_dated["date_var_1"] = EDH_dated["random_dates"].apply(get_date_var)
 ```{python}
 # modifying coordinates in EDH to fit the script
 EDH_dated[['Longitude', 'Latitude']] = pd.DataFrame(EDH_dated.coordinates. tolist(), index=EDH_dated.index)
-
 ```
 
 ```{python}
@@ -323,3 +329,14 @@ fig.suptitle(f'Spatial distribution of "dis manibus" formula by historic period 
 plt.savefig('../figures/Fig4_Formulae_compared_production_periods.png')
 fig
 ```
+
+
+
+# Creating three snaphots in time
+
+From simulated dates take 1-100, 101-200, 201-300 and then create a network.
+
+```{r}
+EDH_dated[1:4]
+```
+
