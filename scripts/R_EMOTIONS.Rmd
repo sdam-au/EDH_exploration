@@ -240,3 +240,6 @@ ggplot(data = EDH_bi_n10,
   labs(x = "Word", y = "count")
 ```
 
+## Big picture takeaway
+
+There are serious limitations of sentiment analysis using existing lexicons, and you should **think really hard** about your findings and if a lexicon makes sense for your study. Otherwise, word counts and exploration alone can be useful! 

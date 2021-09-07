@@ -45,6 +45,7 @@ EDH_tibble <- as_tibble(list_json)
 Display the first 6 records
 ```{r}
 head(EDH_tibble)
+dim(EDH_tibble)
 ```
 
 ## Text preparation
@@ -54,6 +55,20 @@ Converting text of inscriptions to lowercase
 ```{r}
 EDH_tibble <- EDH_tibble %>% 
   mutate(clean_text_interpretive_word_lowercase = str_to_lower(EDH_tibble$clean_text_interpretive_word))
+```
+
+
+## Subsample for students
+A sample of the interpretive text so that students can practice regular expressions.
+
+```{r}
+EDH_tiny <- EDH_tibble %>% 
+  select(id, clean_text_interpretive_word, clean_text_interpretive_word_lowercase)
+
+colnames(EDH_tiny)
+dim(EDH_tiny)
+head(EDH_tiny)
+write_csv2(EDH_tiny, "../data/EDH_tiny.csv")
 ```
 
 
@@ -96,6 +111,7 @@ How many of different variants are present
 ```{r}
 table(str_extract(EDH_tibble$clean_text_interpretive_word_lowercase, dis_manibus_regex))
 ```
+
 
 Creating new attribute with the separated formula
 ```{r}
@@ -281,9 +297,10 @@ library(ape)
 
 # convert 'hclust' to 'phylo' object
 phylo_tree <- as.phylo(hc)
-
+plot(phylo_tree)
 # get edges
 graph_edges <- phylo_tree$edge
+
 
 # library igraph
 #install.packages("igraph")
@@ -295,7 +312,24 @@ graph_net <- graph.edgelist(graph_edges)
 # plot graph
 plot(graph_net)
 
+
+
+# directly from phylo_tree
+DM100 <- as.igraph(phylo_tree, directed = FALSE, use.labels = TRUE)
+plot(DM100)
+
+# vertex attributers
+unique(vertex_attr(DM100))
+V(DM100)$country <- EDH100$country_clean
 ```
+
+#Location
+```{r}
+table(EDH100$country_clean)
+table(EDH100$province_label_clean)
+table(EDH100$not_after)
+```
+
 
 
 ```{r}

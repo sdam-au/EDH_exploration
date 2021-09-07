@@ -91,6 +91,8 @@ class(DM_Spain$m)
 ## Trying to use nphawkes package from P Boyde
 credits: https://www.youtube.com/watch?v=lFhAQp8LHg4 
 
+Peter is available now : fall 2021
+
 What is the Hawkes process? It is a so-called self-exciting process in which the occurrence of a point temporarily elevates surrounding points. It is useful for cascading chains of events such as epidemics, social media memes, or stockexchange devaluations.  The assumption is that random background events spawn/trigger non-random children events in their (spatial?) vicinity.
  
 In terms of probability: A Hawkes process (Hawkes, 1971; Liniger, 2009) supposes that past events can temporarily raise the probability of future events, assuming that such excitation is (1) positive, (2) additive over the past events, and (3) exponentially decaying with time.
@@ -110,13 +112,35 @@ out = misd(dates = hm$t,
    lat = hm$lat,
    lon = hm$lon,
    marks = hm$m,
-   time_breaks = c(0,0.1, 0.5, 1,7,93,600),
-   space_breaks = c(0,0.5, 1, 10, 25, 100),
+   time_breaks = c(0,0.1, 0.5, 1,7,93,600), # days or seconds
+   space_breaks = c(0,0.5, 1, 10, 25, 100), # entered as miles or kms
    mark_breaks = c(3, 3.1,3.3, 4, 5, 8),
    just_times = T)
 out
-plot(out$time_bins)
+plot(out$time_breaks)
+plot(out$h)
+install.packages("cowplot")
+library(cowplot)
+trig_plots(out) # series of plots, h(s) is effect size
+trig_plots(out, time_xlim = c(0, 15)) # reduce xlim to focus on effect - the ability of producing children over time in days/ kms in space / number of letter (in case of inscriptions)
+
 ```
+g and h are probability density
+k
+
+space can be dropped
+
+
+perc_diag 0.721/ 72.1% are probably parents or background events
+amount of probability that exists along the diagonal
+
+which is probabilistically a parent event?
+Look at the mainshock and parent under "data" are calculated with the misd()
+
+residual diagnostics: 
+superthinning (included in the package) ; 
+if the model is fitted well, in areas of high intensity , it should remove points; in areas of low intensity, it will simulate random points; in the end you get a uniform process.  If the output is not a uniform process, the thinning will not work correctly. 
+
 
 ## Run nphawkes::misd function on DIS MANIBUS dataset from Spain
 
@@ -125,13 +149,15 @@ outDM <- misd(dates = DM_Spain$t,
             lat = DM_Spain$latitude,
             lon = DM_Spain$longitude,
             marks = as.numeric(DM_Spain$m))
-
+View(out$p0)
 # Let's look at inscription frequency through time
 plot(table(DM_Spain$not_before))
 
 # Now what does the Hawkes model actually show? 
 hist(outDM$data$parent)
-plot(outDM$g)
+plot(outDM$g) # time triggering value for temporal bin; g and h are probability densities (in case of no bin assignment, a uniform split is applied). In the first bin, the event is more likely to spawn a child than in the next bins, until 6th point in time, than the probability drops. 
+plot(outDM$h) # y axis is effect size; x axis should show what the effect is for each distance; play with the spatial binning; spread out the first bin;
+
 ```
 
 ## Questions for nphawkes
