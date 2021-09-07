@@ -117,8 +117,10 @@ out = misd(dates = hm$t,
    mark_breaks = c(3, 3.1,3.3, 4, 5, 8),
    just_times = T)
 out
-plot(out$time_breaks)
+View(out$p0) # see the probability (of observation being a parent of the variable) matrix
+plot(out$time_breaks) # only your inputs
 plot(out$h)
+
 install.packages("cowplot")
 library(cowplot)
 trig_plots(out) # series of plots, h(s) is effect size
@@ -148,8 +150,10 @@ if the model is fitted well, in areas of high intensity , it should remove point
 outDM <- misd(dates = DM_Spain$t,
             lat = DM_Spain$latitude,
             lon = DM_Spain$longitude,
-            marks = as.numeric(DM_Spain$m))
-View(out$p0)
+            marks = as.numeric(DM_Spain$m),
+            time_breaks = c(0,0.1, 0.25, 0.5,1,2.5, 5), # years
+   space_breaks = c(0,10, 25, 50, 100, 250, 500))
+
 # Let's look at inscription frequency through time
 plot(table(DM_Spain$not_before))
 
@@ -157,6 +161,8 @@ plot(table(DM_Spain$not_before))
 hist(outDM$data$parent)
 plot(outDM$g) # time triggering value for temporal bin; g and h are probability densities (in case of no bin assignment, a uniform split is applied). In the first bin, the event is more likely to spawn a child than in the next bins, until 6th point in time, than the probability drops. 
 plot(outDM$h) # y axis is effect size; x axis should show what the effect is for each distance; play with the spatial binning; spread out the first bin;
+
+trig_plots(outDM) 
 
 ```
 
