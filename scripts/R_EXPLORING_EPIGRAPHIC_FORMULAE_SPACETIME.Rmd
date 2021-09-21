@@ -86,6 +86,110 @@ levels(DM_Spain$m) <- c(1,2,3,4)
 class(DM_Spain$m)
 ```
 
+## Evaluating different factors in diffusion
+
+Different factors may have influenced the dissemination of particular formulae throughout the Roman Empire, from elite competition to the location of stonemason workshops. In order to evaluate the role of different factors, we need to reflect these in the `marks` argument in Hawkes process (and most spatial analysis functions).  
+
+`mark` denotes an attribute that contains a factor, or categorized values. 
+
+In the case of DM inscriptions, I wish to create marks with which we could test for two alternative (exclusive) hypotheses about the diffusion of particular DM formulae:
+
+1. Elite competition. Importance and wealth of the family/deceased individual manifest in the conspicuous nature of an inscription impacts the proliferation of the particular epigraphic expression (Arthur Saxe hypothesis). Size and quality of inscribed medium, length of inscription, unabridged content increase the overall expense of the production. The higher the expense, the more stimulus for local elite competition, and the greater proliferation of similar inscriptions in a desire to trump neighbours in advertising exploits. This approach should show high variability in elite production (long and expensive but differentiated inscriptions) and mimicry in non-elite production (freedmen and clients imitating the masters to the letters, but perhaps in more abridged, lower quality formats)
+
+2. Workshops and regional fashion are the primary factors in the selection of particular formulae, resulting in (dialect-like) zones of use. We should see geographically constrained clusters where similarity decreases with distance from a *workshop*. The assumption here is that workshops do not have overlapping zones of influence??
+
+There may be other options, of course, such as child workshops or masons working freelance, and creating variations on the canonical form...
+
+In order to test these two hypotheses, I create several different marks for `expense` which encodes the cost of an inscription, based on the a)length of the inscription, b)dimensions of the medium, and c)the number of capitalised words within. 
+
+### Length of inscription
+One of the best ways to estimating the cost of an inscription is using its length, with number of words being a reasonable proxy. This calculation varies depending on whether it is run on transcription, or clean_text_interpretive_word, often inflating the former due to editorial notation. 
+
+Let's compare the difference between transcription and interpretive word on this small example
+```{r}
+# Check the editorial apparatus in the fourth inscription
+head(EDH_tibble$transcription, 4)
+# Compare the cleaned version
+head(EDH_tibble$clean_text_interpretive_word)
+# Count the words in fourth inscription
+str_count(EDH_tibble$transcription[4], '\\w+')
+# Count them in the clean version
+str_count(EDH_tibble$clean_text_interpretive_word[4], '\\w+')
+
+```
+While there is some ambiguity given the number of capital letters, for the purpose of this analysis (lenght of text), we are happy with the more conservative estimate.
+
+```{r}
+#Let's create a new column with the word counts.
+EDH_tiny$wc_interpretive <- str_count(EDH_tibble$clean_text_interpretive_word, '\\w+')
+
+# Inspect the result
+summary(EDH_tiny$wc_interpretive) # few massive inscriptions
+table(EDH_tiny$wc_interpretive) # there are a few zeroes - no inscriptions
+
+# Which inscriptions have more than 1000 words?
+which(EDH_tiny$wc_interpretive>1000)
+
+# How many words do they contain?
+EDH_tiny$wc_interpretive[EDH_tiny$wc_interpretive>1000]
+
+# Let's display a histogram of wordcount log instead of wordcount to gauge the "magnitude"
+hist(log10(EDH_tiny$wc_interpretive), main = "Logarithm of number of words on inscriptions")
+
+# Write the log of length into the dataset
+log10(0)
+
+zeroes <- which(EDH_tiny$wc_interpretive == 0)
+EDH_tiny$wc_interpretive[zeroes] <- NA
+EDH_tiny$wc_interpretive_log <- log10(EDH_tiny$wc_interpretive)
+summary(EDH_tiny$wc_interpretive_log)
+```
+
+### Size of the inscription medium
+Second best way to estimating the cost of an inscription is to take into account the size of the stone block it is on (most epitaphs are on stone)
+
+```{r}
+summary(EDH_tibble$height_cm)
+summary(EDH_tibble$width_cm)
+summary(EDH_tibble$depth_cm) # 10000 more inscriptions have NAs as in no depth
+
+EDH_tibble %>% 
+  select(height_cm,width_cm,depth_cm) %>% 
+  head()
+
+# Area
+area_cm2<- EDH_tibble$height_cm*EDH_tibble$width_cm
+length(which(is.na(area_cm2))) #36600 NAs
+summary(area_cm2)
+
+hist(log10(area_cm2))
+
+# Volume
+volume_cm3 <- EDH_tibble$height_cm*EDH_tibble$width_cm*EDH_tibble$depth_cm
+summary(volume_cm3*0.001) # cubic decimeters, 46980 NAs 
+
+# See the distribution
+hist(log10(volume_cm3))
+
+# Write to data
+EDH_tiny$volume_cm3log <- log10(volume_cm3)
+EDH_tiny$area_cm2log <- log10(area_cm2)
+```
+
+### Number of capitalized words
+Another way of gauging the significance of an inscription is to count all the personal names. Important persons might have more names than middling merchants, or care to write them all out (e.g. emperors) engaging in conspicuous self-advertising, which we are trying to quantify here.
+
+```{r}
+# Compare the cleaned version: How many capitalized words do you see in the fourth inscription?
+head(EDH_tibble$clean_text_interpretive_word)
+
+# How many does R see?
+str_count(EDH_tibble$clean_text_interpretive_word[4], '\\b[A-Z][a-z]+')
+
+# So, we seem to be erring on two oppositde sides: garbled or unexpanded abbreviations don't count, AND where god invocations appear, they amplify count.   Who knows what else happens.
+```
+
+
 
 # Analysis I
 ## Trying to use nphawkes package from P Boyde
