@@ -106,7 +106,7 @@ In order to test these two hypotheses, I create several different marks for `exp
 One of the best ways to estimating the cost of an inscription is using its length, with number of words being a reasonable proxy. This calculation varies depending on whether it is run on transcription, or clean_text_interpretive_word, often inflating the former due to editorial notation. 
 
 Let's compare the difference between transcription and interpretive word on this small example
-```{r}
+```{r length-text-inspect}
 # Check the editorial apparatus in the fourth inscription
 head(EDH_tibble$transcription, 4)
 # Compare the cleaned version
@@ -119,7 +119,7 @@ str_count(EDH_tibble$clean_text_interpretive_word[4], '\\w+')
 ```
 While there is some ambiguity given the number of capital letters, for the purpose of this analysis (lenght of text), we are happy with the more conservative estimate.
 
-```{r}
+```{r length-text}
 #Let's create a new column with the word counts.
 EDH_tiny$wc_interpretive <- str_count(EDH_tibble$clean_text_interpretive_word, '\\w+')
 
@@ -148,7 +148,7 @@ summary(EDH_tiny$wc_interpretive_log)
 ### Size of the inscription medium
 Second best way to estimating the cost of an inscription is to take into account the size of the stone block it is on (most epitaphs are on stone)
 
-```{r}
+```{r size-inscription}
 summary(EDH_tibble$height_cm)
 summary(EDH_tibble$width_cm)
 summary(EDH_tibble$depth_cm) # 10000 more inscriptions have NAs as in no depth
@@ -181,14 +181,41 @@ Another way of gauging the significance of an inscription is to count all the pe
 
 ```{r}
 # Compare the cleaned version: How many capitalized words do you see in the fourth inscription?
-head(EDH_tibble$clean_text_interpretive_word)
+EDH_tibble$clean_text_interpretive_word[4]
 
 # How many does R see?
 str_count(EDH_tibble$clean_text_interpretive_word[4], '\\b[A-Z][a-z]+')
 
-# So, we seem to be erring on two oppositde sides: garbled or unexpanded abbreviations don't count, AND where god invocations appear, they amplify count.   Who knows what else happens.
+
+#Check the tail of the inscriptions
+tail(EDH_tibble$clean_text_interpretive_word)
+
+# What is actually on the stone?
+tail(EDH_tibble$transcription)
+
+
+# So, we seem to be erring on two oppositde sides: garbled or unexpanded abbreviations don't count, AND where god invocations appear, they amplify count.   Who knows what else happens. It is not a super good measure.
+
+EDH_tiny$capitalized_words <- str_count(EDH_tibble$clean_text_interpretive_word, '\\b[A-Z][a-z]+')
+
+EDH_tiny$capitalized_words_log <- log10(str_count(EDH_tibble$clean_text_interpretive_word, '\\b[A-Z][a-z]+')) 
+
+hist(log10(EDH_tiny$capitalized_words), xlab = "number of capitalized words in inscription (log)", main = "Frequency of capitalized words in inscriptions (log)")
+?hist()
+
 ```
 
+# Join marks attributes with Spanish subset
+```{r join-data}
+# source datasets
+dim(DM_Spain) # contains temporal and spatial data
+dim(EDH_tiny) # contains attributes for 'marks'
+
+# both datasets contain the shared key "id", which we can join by
+DMS <- DM_Spain %>% 
+  left_join(EDH_tiny, by = "id")
+dim(DMS)
+```
 
 
 # Analysis I
@@ -202,8 +229,8 @@ What is the Hawkes process? It is a so-called self-exciting process in which the
 In terms of probability: A Hawkes process (Hawkes, 1971; Liniger, 2009) supposes that past events can temporarily raise the probability of future events, assuming that such excitation is (1) positive, (2) additive over the past events, and (3) exponentially decaying with time.
 
 ```{r}
-install.packages("devtools")
-devtools::install_github("boydpe/nphawkes")
+# install.packages("devtools")
+# devtools::install_github("boydpe/nphawkes")
 library(nphawkes)
 ?misd()
 ```
