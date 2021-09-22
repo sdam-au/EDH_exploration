@@ -100,7 +100,7 @@ In the case of DM inscriptions, I wish to create marks with which we could test 
 
 There may be other options, of course, such as child workshops or masons working freelance, and creating variations on the canonical form...
 
-In order to test these two hypotheses, I create several different marks for `expense` which encodes the cost of an inscription, based on the a)length of the inscription, b)dimensions of the medium, and c)the number of capitalised words within. 
+In order to test these two hypotheses, I create several different marks for `expense` which encodes the cost of an inscription, based on the a)length of the inscription, b)dimensions of the medium, and c)the number of capitalised words within, d) osobni jmena z atributu people. 
 
 ### Length of inscription
 One of the best ways to estimating the cost of an inscription is using its length, with number of words being a reasonable proxy. This calculation varies depending on whether it is run on transcription, or clean_text_interpretive_word, often inflating the former due to editorial notation. 
@@ -215,6 +215,8 @@ dim(EDH_tiny) # contains attributes for 'marks'
 DMS <- DM_Spain %>% 
   left_join(EDH_tiny, by = "id")
 dim(DMS)
+
+hist(DMS$wc_interpretive, main = "Length of inscriptions", xlab = "Number of words in an inscription")
 ```
 
 
@@ -277,11 +279,11 @@ if the model is fitted well, in areas of high intensity , it should remove point
 
 ## Run nphawkes::misd function on DIS MANIBUS dataset from Spain
 
-```{r}
-outDM <- misd(dates = DM_Spain$t,
-            lat = DM_Spain$latitude,
-            lon = DM_Spain$longitude,
-            marks = as.numeric(DM_Spain$m),
+```{r misd-length-inscription}
+outDM <- misd(dates = DMS$t,
+            lat = DMS$latitude,
+            lon = DMS$longitude,
+            marks = DMS$wc_interpretive_log,
             time_breaks = c(0,0.1, 0.25, 0.5,1,2.5, 5), # years
    space_breaks = c(0,10, 25, 50, 100, 250, 500))
 
@@ -292,11 +294,43 @@ plot(table(DM_Spain$not_before))
 hist(outDM$data$parent)
 plot(outDM$g) # time triggering value for temporal bin; g and h are probability densities (in case of no bin assignment, a uniform split is applied). In the first bin, the event is more likely to spawn a child than in the next bins, until 6th point in time, than the probability drops. 
 plot(outDM$h) # y axis is effect size; x axis should show what the effect is for each distance; play with the spatial binning; spread out the first bin;
+View(outDM$p0)
 
 trig_plots(outDM) 
 
 ```
 
+### Area / Size of medium
+
+```{r misd-medium-area}
+# does not work because of missing values in marks/volume or area
+outDM_size_cm2 <- misd(dates = DMS$t,
+            lat = DMS$latitude,
+            lon = DMS$longitude,
+            marks = DMS$area_cm2log, #over 100 missing
+            time_breaks = c(0,0.1, 0.25, 0.5,1,2.5, 5), # years
+   space_breaks = c(0,10, 25, 50, 100, 250, 500))
+
+summary(DMS$area_cm2log) #148 NAs
+summary(DMS$volume_cm3log) #213 missing
+
+trig_plots(outDM) 
+```
+
+## Capitalized word cound
+```{r capit-word-count}
+# does not work because of missing values in marks/volume or area
+outDM_capitalized <- misd(dates = DMS$t,
+            lat = DMS$latitude,
+            lon = DMS$longitude,
+            marks = DMS$capitalized_words, 
+            time_breaks = c(0,0.1, 0.25, 0.5,1,2.5, 5), # years
+   space_breaks = c(0,10, 25, 50, 100, 250, 500))
+
+summary(DMS$capitalized_words) #213 missing
+
+trig_plots(outDM_capitalized) 
+```
 ## Questions for nphawkes
 
 How do I know which are the probably parents and which are the children events?
