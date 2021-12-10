@@ -360,12 +360,13 @@ library(sdam)
 ```
 
 ```{r}
+
 mycred_secret<- readLines("../../../../Desktop/mysecret.txt")
 
 EDH_unnested_json <- jsonlite::toJSON(EDH_unnested, auto_unbox = TRUE)
-jsonlite::write_json(EDH_unnested_json, path="../data/EDH_people_clean_origo_2021-08-11.json")
+jsonlite::write_json(EDH_unnested_json, path="../data/EDH_people_clean_origo_2021-08-25.json")
 
-sdam::request("../data/EDH_people_clean_origo_2021-08-11.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public", force = TRUE,
+sdam::request("../data/EDH_people_clean_origo_2021-08-25.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public", force = TRUE,
         method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
 
 remove(mycred_secret)

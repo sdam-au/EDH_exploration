@@ -209,7 +209,7 @@ nrow(dplyr::filter(location, location$province_label_clean == "unknown"))/(total
 ### Inscriptions with no coordinates available
 ```{r}
 no_coords <- location %>% 
-  filter(coordinates == "list()")
+  dplyr::filter(coordinates == "list()")
 nrow(no_coords)
 
 nrow(no_coords)/(total/100)
@@ -347,6 +347,23 @@ map_ancient_findspot <-leaflet() %>%
 map_ancient_findspot
 ```
 
+```{r}
+map_all <-leaflet() %>%
+  #addProviderTiles("Esri.WorldTopoMap", group = "Topo") %>%
+  setView( lng = 20.326743, lat = 46.897122, zoom = 4 ) %>% 
+  addProviderTiles("Esri.WorldImagery", group = "ESRI Aerial") %>%
+  addCircles(lng = EDH_tibble$longitude, 
+             lat = EDH_tibble$latitude, opacity = 0.1, radius = 0.5, fill = TRUE, color = "orange",
+             popup = paste0("<b> InscriptionID: </b>", EDH_tibble$id, 
+                            "<br><b> Ancient Findspot: </b>", EDH_tibble$findspot_ancient_clean)
+  ) %>% 
+addLegend(position = "topright",
+  colors = c("Orange"),
+  labels = c("Findspots"), opacity = 1,
+  title = "Spatial distribution of Latin inscriptions (EDH, n = 81,476)"
+)
+map_all
+```
 
 ## Date
 
