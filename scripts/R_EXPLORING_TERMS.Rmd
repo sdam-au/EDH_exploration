@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, echo=TRUE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE, error=TRUE)
-devtools::install_github("sdam-au/sdam")
+#devtools::install_github("sdam-au/sdam")
 
 library(sdam)
 library(jsonlite)
@@ -30,33 +30,46 @@ resp = request("EDH_text_cleaned_2020-10-09.json", path="/sharingin/648597@au.dk
 remove(mycred_secret)
 ```
 
+
+```{r}
+EDH<- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
+```
+
+
 2. Make a list and tibble from the request function
 ```{r}
 list_json <- jsonlite::fromJSON(resp)
-EDH_tibble <- as_tibble(list_json)
+EDH <- as_tibble(list_json)
 ```
 
 # Search in the cleaned text for Asclepius
 ```{r}
 asclepius <- c("[A|a]s[c|k]lep.+", "[A|a|e|E]es[c|k]ul.+")
 
-EDH_tibble %>% 
+EDH %>% 
   dplyr::filter(str_detect(string= clean_text_interpretive_word, pattern=asclepius))
 
-EDH_tibble %>% 
+EDH %>% 
   filter(str_detect(string= commentary, pattern=asclepius))
 
 ```
 
 ```{r}
 apollo <- c("[A|a]po[l|ll]")
-EDH_tibble %>% 
+EDH %>% 
   filter(str_detect(string = clean_text_interpretive_word, pattern=apollo))
 ```
 
 ```{r}
-EDH_tibble %>% 
+EDH %>% 
   count(responsible_individual, sort = TRUE)
 ```
 
+## How many types of inscr
+
+```{r}
+EDH_inscrtypes<- as.data.frame(unique(EDH$type_of_inscription_clean))
+
+write_csv(EDH_inscrtypes, "../data/EDH_types_inscr.csv")
+```
 
