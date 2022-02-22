@@ -80,7 +80,7 @@ EDH_tokenized %>%
 
 # my own minimal list, for better one , see quanteda package or 
 # https://github.com/aurelberra/stopwords
-stop_wordLT <- tibble(word = c("ab", "ac", "ad", "adhic", "aliqui", "aliquis", "an", "ante", "apud", "at", "atque", "aut", "autem", "cum", "cur", "de", "deinde", "dum", "ego", "enim", "ergo", "es", "est", "et", "etiam", "etsi", "ex", "fio", "haud", "hic", "iam", "idem", "igitur", "ille", "in", "infra", "inter", "interim", "ipse", "is", "ita", "magis", "modo", "mox", "nam", "ne", "nec", "necque", "neque", "nisi", "non", "nos", "o", "ob", "per", "possum", "post", "pro", "quae", "quam", "quare", "qui", "quia", "quicumque", "quidem", "quilibet", "quis", "quisnam", "quisquam", "quisque", "quisquis", "quo", "quoniam", "sed", "si", "sic", "sive", "sub", "sui", "sum", "super", "suus", "tam", "tamen", "trans", "tu", "tum", "ubi", "uel", "uero"))
+stop_wordLT <- tibble(word = c("ab", "ac", "ad", "adhic", "aliqui", "aliquis", "an", "ante", "apud", "at", "atque", "aut", "autem", "cum", "cur", "de", "deinde", "dum", "ego", "enim", "ergo", "es", "est", "et", "etiam", "etsi", "ex", "fio", "haud", "hic", "iam", "idem", "igitur", "ille", "in", "infra", "inter", "interim", "ipse", "is", "ita", "magis", "modo", "mox", "nam", "ne", "nec", "necque", "neque", "nisi", "non", "nos", "o", "ob", "per", "possum", "post", "pro", "quae", "quam", "quare", "qui", "quia", "quicumque", "quidem", "quilibet", "quis", "quisnam", "quisquam", "quisque", "quisquis", "quo", "quoniam", "sed", "si", "sic", "sive", "sub", "sui", "sum", "super", "suus", "tam", "tamen", "trans", "tu", "tum", "ubi", "uel", "uero", "et", "in", "i", "ii", "iii", "que", "iv", "v"))
 
 EDH_stop <- EDH_tokenized %>% 
   anti_join(stop_wordLT, by = "word")
@@ -90,7 +90,7 @@ EDH_stop <- EDH_tokenized %>%
 ```{r, tidy=TRUE}
 EDH_stop %>% 
   count(word, sort = TRUE) %>% 
-  filter(n > 5000) %>% 
+  filter(n > 4000) %>% 
   mutate(word = reorder(word, n)) %>% 
   print()
 ```
@@ -115,12 +115,12 @@ words_total_province %>%
   theme_linedraw(base_size = 10) 
 ```
 
-## The most common words by Roman provinces
+## The most common words by Roman provinces (stopwords excluded)
 ```{r}
-EDH_tokenized %>% 
+EDH_stop %>% 
   count(province_label_clean, word, sort = TRUE) %>% 
   group_by(province_label_clean) %>% 
-  filter(n > 1000) %>%
+  filter(n > 500) %>%
   mutate(province_label_clean = reorder(province_label_clean, n)) %>% 
   ggplot(aes(y=province_label_clean, x=n)) +
   geom_col(aes(fill=word), width=0.7) +
@@ -131,7 +131,7 @@ EDH_tokenized %>%
 
 ## The most common words by type of an inscription (epitaph)
 ```{r}
-EDH_tokenized %>% 
+EDH_stop %>% 
   count(type_of_inscription_clean, word, sort = TRUE) %>% 
   group_by(type_of_inscription_clean) %>% 
   filter(type_of_inscription_clean == "epitaph") %>% 
@@ -152,7 +152,7 @@ words_epitaph %>%
 
 ## The most common words by type of an inscription (milestone)
 ```{r}
-EDH_tokenized %>% 
+EDH_stop %>% 
   count(type_of_inscription_clean, word, sort = TRUE) %>% 
   group_by(type_of_inscription_clean) %>% 
   filter(type_of_inscription_clean == "mile-/leaguestone") %>% 
@@ -174,7 +174,7 @@ ggsave(filename = "../figures/EDH_milestone_common_words.png", width = 8, height
 
 ## The most common words on milestones per province
 ```{r}
-EDH_tokenized %>% 
+EDH_stop %>% 
   filter(type_of_inscription_clean == "mile-/leaguestone") %>% 
   count(province_label_clean, word, sort = TRUE) %>% 
   group_by(province_label_clean) %>% 
@@ -190,7 +190,7 @@ EDH_tokenized %>%
 ```{r, warning=FALSE}
 library(wordcloud)
 
-EDH_tokenized %>% 
+EDH_stop %>% 
   filter(type_of_inscription_clean == "mile-/leaguestone") %>% 
   count(province_label_clean, word, sort = TRUE) %>% 
   group_by(province_label_clean) %>% 
@@ -202,7 +202,7 @@ EDH_tokenized %>%
 Source: https://www.tidytextmining.com/tfidf.html
 Using term frequency and inverse document frequency allows us to find words that are characteristic for one document within a collection of documents.
 ```{r}
-insc_types_words <- EDH_tokenized %>% 
+insc_types_words <- EDH_stop %>% 
   count(type_of_inscription_clean, word, sort = TRUE)
 
 total_words <- insc_types_words %>% 
@@ -403,7 +403,7 @@ insc_trigram
 library(widyr)
 
 # count words co-occuring within sections
-word_pairs<- EDH_tokenized %>% 
+word_pairs<- EDH_stop %>% 
   pairwise_count(word, id, sort = TRUE)
 
 word_pairs
