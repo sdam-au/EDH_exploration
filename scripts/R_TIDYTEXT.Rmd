@@ -82,8 +82,19 @@ EDH_tokenized %>%
 # https://github.com/aurelberra/stopwords
 stop_wordLT <- tibble(word = c("ab", "ac", "ad", "adhic", "aliqui", "aliquis", "an", "ante", "apud", "at", "atque", "aut", "autem", "cum", "cur", "de", "deinde", "dum", "ego", "enim", "ergo", "es", "est", "et", "etiam", "etsi", "ex", "fio", "haud", "hic", "iam", "idem", "igitur", "ille", "in", "infra", "inter", "interim", "ipse", "is", "ita", "magis", "modo", "mox", "nam", "ne", "nec", "necque", "neque", "nisi", "non", "nos", "o", "ob", "per", "possum", "post", "pro", "quae", "quam", "quare", "qui", "quia", "quicumque", "quidem", "quilibet", "quis", "quisnam", "quisquam", "quisque", "quisquis", "quo", "quoniam", "sed", "si", "sic", "sive", "sub", "sui", "sum", "super", "suus", "tam", "tamen", "trans", "tu", "tum", "ubi", "uel", "uero", "et", "in", "i", "ii", "iii", "que", "iv", "v"))
 
+# removing stopword list from the word list
 EDH_stop <- EDH_tokenized %>% 
   anti_join(stop_wordLT, by = "word")
+
+# removing roman numerals from the word list
+library(googlesheets4)
+
+gs4_deauth() # de-uthorized mode, no need of authentication token (if the spreadsheet is public)
+numerals<- read_sheet("https://docs.google.com/spreadsheets/d/1RKRNMlSjB3yF3FHXPLhGfnLJis63300R9x65BdAKa8o/edit?usp=sharing", sheet = "stopwordlist")
+
+EDH_stop <- EDH_stop %>% 
+  anti_join(numerals, by = "word")
+
 ```
 
 ## Counting the most common words (without stopwords)
@@ -198,6 +209,7 @@ EDH_stop %>%
   mutate(province_label_clean = reorder(province_label_clean, n)) %>% 
   with(wordcloud(word, n, max.words = 200))
 ```
+
 # Frequency of words
 Source: https://www.tidytextmining.com/tfidf.html
 Using term frequency and inverse document frequency allows us to find words that are characteristic for one document within a collection of documents.
@@ -256,6 +268,10 @@ Commentary: EDH corpus uses a lower percentage of the most common words than man
 
 
 ## Term frequency vs inverse document frequency
+
+https://www.tidytextmining.com/tfidf.html
+The statistic tf-idf is intended to measure how important a word is to a document in a collection (or corpus) of documents, for example, to one novel in a collection of novels or to one website in a collection of websites.
+
 ```{r}
 insc_types_words <- insc_types_words %>%
   bind_tf_idf(word, type_of_inscription_clean, n)
@@ -274,29 +290,26 @@ insc_types_words %>%
   arrange(desc(tf_idf)) %>%
   mutate(word = factor(word, levels = rev(unique(word)))) %>% 
   group_by(type_of_inscription_clean) %>% 
-  top_n(15) %>% 
-  ungroup() %>%
+  slice_head(n=10) %>% 
   ggplot(aes(word, tf_idf, fill = type_of_inscription_clean)) +
   geom_col(show.legend = FALSE) +
   labs(x = NULL, y = "tf-idf") +
   facet_wrap(~type_of_inscription_clean, ncol = 4, scales = "free_y") +
   coord_flip() +
-  labs(x = "word", y = "tf-idf", title = "Term frequency - inverse document frequency (tf-idf) by type of inscription", subtitle = "EDH dataset, n = 81,476 inscriptions") +
+  labs(x = "word", y = "tf-idf", title = "Single words: term frequency - inverse document frequency (tf-idf) by type of inscription", subtitle = "EDH dataset, n = 81,476 inscriptions") +
   theme_linedraw(base_size = 10)
 ggsave("../figures/EDH_tf_idf_insc_type.png", width = 16, height = 16)
 ```
 
-## Custom stopwords list
-```{r}
-mystopwords <- tibble(word = c("et", "in", "qui", "i", "v", "ii", "ex"))
-```
 
 # N-grams and correlations
-## Bigrams
+
+## Bigrams without Roman numerals
 ```{r}
 insc_bigrams <- EDH_tibble %>%
   select(clean_text_interpretive_word, type_of_inscription_clean, province_label_clean) %>% 
-  unnest_tokens(bigram, clean_text_interpretive_word, token = "ngrams", n = 2)
+  mutate(clean_no_numerals = str_replace_all(clean_text_interpretive_word, numerals$word_boundaries, "")) %>% 
+  unnest_tokens(bigram, clean_no_numerals, token = "ngrams", n = 2)
 head(insc_bigrams)
 ```
 ```{r}
@@ -334,19 +347,23 @@ bigram_tf_idf <- insc_bigrams%>%
 
 bigram_tf_idf
 ```
+
 ```{r}
 bigram_tf_idf %>%
   arrange(desc(tf_idf)) %>%
   mutate(bigram = factor(bigram, levels = rev(unique(bigram)))) %>% 
   group_by(type_of_inscription_clean) %>% 
-  top_n(10) %>% 
-  ungroup() %>%
+  slice_head(n=10) %>%  
   ggplot(aes(bigram, tf_idf, fill = type_of_inscription_clean)) +
   geom_col(show.legend = FALSE) +
   labs(x = NULL, y = "tf-idf") +
-  facet_wrap(~type_of_inscription_clean, ncol = 3, scales = "free_y") +
+  facet_wrap(~type_of_inscription_clean, ncol = 4, scales = "free_y") +
   coord_flip() +
-  theme_linedraw(base_size = 10) 
+  labs(x = "bigram", y = "tf-idf", title = "Most important pair of words (bigrams) by inscription type", subtitle = "Epigraphic Database Heidelberg (EDH) dataset, n=81,476 inscriptions, tf-idf method") +
+  theme_linedraw(base_size = 10) +
+  theme(plot.title = element_text(size=40)) + 
+  theme(axis.text = element_text(size = 14)) +
+  theme(plot.subtitle = element_text(size=24))
 ggsave("../figures/EDH_bigrams_tf_idf_insc_type.png", width = 20, height = 20)
 ```
 ### Visualising bigrams as network
@@ -395,8 +412,30 @@ insc_trigram <- EDH_tibble %>%
   separate(trigram, c("word1", "word2", "word3"), sep = " ") %>%
   count(word1, word2, word3, sort = TRUE)
 insc_trigram
+
 ```
 
+
+```{r}
+
+trigram_graph<- insc_trigram %>% 
+  filter(n > 300) %>%
+  graph_from_data_frame() 
+
+trigram_graph
+
+set.seed(1000)
+
+b <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(trigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                 arrow = b, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 4) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+ggsave("../figures/EDH_trigrams_networks_2.png", width = 10, height = 10)
+```
 
 ## Counting and correlating pairs of words with the widyr package
 ```{r}
@@ -408,6 +447,7 @@ word_pairs<- EDH_stop %>%
 
 word_pairs
 ```
+
 ```{r}
 word_pairs %>%
   filter(item1 == "votum")
@@ -433,7 +473,7 @@ word_cors %>%
   filter(item1 %in% c("milia", "passuum", "via", "viator")) %>%
   group_by(item1) %>%
   top_n(10) %>%
-  ungroup() %>%
+  #ungroup() %>%
   mutate(item2 = reorder(item2, correlation)) %>%
   ggplot(aes(item2, correlation)) +
   geom_bar(stat = "identity", aes(fill=correlation), width=0.7) + 
@@ -441,7 +481,7 @@ word_cors %>%
   theme_minimal() +
   coord_flip() +
   labs(y = "Correlation of word-pairs", x = "Word", title = "The most common word-pair correlations on inscriptions", subtitle = "EDH dataset, n = 81,476 inscriptions") 
-  
+ggsave("../figures/EDH_word_pair_corr_milestones.png", width = 10, height = 10)
 ```
 #### Visualisation of correlations 
 ```{r}
@@ -477,6 +517,7 @@ EDH_dfm <- EDH_tokenized %>%
   cast_dfm(type_of_inscription_clean, word, n)
 EDH_dfm
 ```
+
 ## Exploration of matrix
 ```{r}
 # how many words has milestone
