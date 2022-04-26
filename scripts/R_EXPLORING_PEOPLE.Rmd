@@ -26,7 +26,7 @@ library(tidyverse)
 #library(sdam)
 library(jsonlite)
 library(leaflet)
-install.packages("tidyverse")
+#install.packages("tidyverse")
 ```
 
 ## Loading data from Sciencedata.dk
@@ -35,7 +35,7 @@ install.packages("tidyverse")
 list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
 
- download.file("https://sciencedata.dk/public/b6b6afdb969d378b70929e86#e58ad975/EDH_text_cleaned_2021-01-21.json", "../data/inscriptions.json")
+list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json",  "../data/EDH_text_cleaned_2021-01-21.json")
 
 ```
 
@@ -85,8 +85,9 @@ EDH_tibble$people[1:2]
 ```
 
 ```{r}
-EDH_unnested<- EDH_tibble %>% 
-  unnest(people)
+EDH_unnested<- EDH_tibble[1:10] %>% 
+  dplyr::select(people) %>% 
+  unnest_auto(people)
 ```
 
 ## What are names of all attributes within the 'people' attribute
