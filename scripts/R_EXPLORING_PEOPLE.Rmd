@@ -35,7 +35,8 @@ library(leaflet)
 list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
 EDH_tibble <- as_tibble(list_json)
 
-list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json",  "../data/EDH_text_cleaned_2021-01-21.json")
+# download as a local copy
+#download.file("https://sciencedata.dk/public/b6b6afdb969d378b70929e86#e58ad975/EDH_text_cleaned_2021-01-21.json", "../data/inscriptions.json")
 
 ```
 
