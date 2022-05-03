@@ -1,7 +1,7 @@
 ---
 title: "Exploration of the 'people' attribute in EDH dataset"
 author: "Petra Hermankova"
-date: "04/08/2021"
+date: "03/05/2022"
 output:
   html_document:
     theme: united
@@ -32,11 +32,11 @@ library(leaflet)
 ## Loading data from Sciencedata.dk
 
 ```{r}
-list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
-EDH_tibble <- as_tibble(list_json)
+#list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
+#EDH_tibble <- as_tibble(list_json)
 
-# download as a local copy
-#download.file("https://sciencedata.dk/public/b6b6afdb969d378b70929e86#e58ad975/EDH_text_cleaned_2021-01-21.json", "../data/inscriptions.json")
+# download as a local copy from Zenodo
+#download.file("https://zenodo.org/record/4888168/files/EDH_text_cleaned_2021-01-21.json?download=1", "../data/EDH_text_cleaned_2021-01-21.json")
 
 ```
 
@@ -86,21 +86,44 @@ EDH_tibble$people[1:2]
 ```
 
 ```{r}
-EDH_unnested<- EDH_tibble[1:10] %>% 
-  dplyr::select(people) %>% 
-  unnest_auto(people)
+# unnesting the nsted dataframe people
+EDH_unnested<- EDH_tibble %>% 
+  dplyr::select(id, people) %>% 
+  unpack(people) %>% 
+  unnest_wider(people, simplify = TRUE) %>% 
+  unnest_longer(c(person_id,name, cognomen, nomen, supernomen, gender, praenomen, `age: years`, `age: months`, `age: days`, `age: hours`, status, occupation, tribus, origo))
+
+# selecting only inscriptions that have people
+
+EDH_people <- EDH_unnested %>% 
+  filter(!is.na(person_id))
+
+
+# how many inscriptions have no people
+EDH_unnested %>% 
+  filter(is.na(person_id)) %>% 
+  nrow()
 ```
+
+
+```{r}
+# merge EDH people with some attributes from the EDH tibble (inscription type, findspot etc.)
+
+EDH_full <- left_join(EDH_tibble, EDH_people, by = c("id" = "id"))
+
+```
+
 
 ## What are names of all attributes within the 'people' attribute
 ```{r}
-setdiff(names(EDH_unnested), names(EDH_tibble))
+setdiff(names(EDH_people), names(EDH_tibble))
 ```
 
 ## How many people are in total in the EDH database?
 
 One way through gender
 ```{r}
-EDH_unnested %>% 
+EDH_people %>% 
   count(gender, sort = TRUE) -> gender
 
 sum(gender$n)
@@ -108,27 +131,28 @@ sum(gender$n)
 
 Second way through nrow
 ```{r}
-nrow(EDH_unnested)
+nrow(EDH_people)
 ```
 
 
 ## How many people there are per inscription (average, min, max)
 ```{r}
-summary(as.numeric(EDH_unnested$person_id))
+summary(as.numeric(EDH_people$person_id))
 ```
 # Gender
 
 ## What is the gender ratio of people on inscriptions? (male, female, NA)
 ```{r}
-EDH_unnested %>% 
-  count(gender, sort = TRUE)
+EDH_people %>% 
+  count(gender, sort = TRUE) %>% 
+  mutate(ratio = round(n/(sum(n)/100),2))
 ```
 
 # Status
 
 ## What are the names of unique values in the 'status' attribute?
 ```{r}
-EDH_unnested$status %>% 
+EDH_people$status %>% 
   unique()
 ```
 
@@ -136,7 +160,7 @@ EDH_unnested$status %>%
 ## What is the ratio of different statuses, e.g. slave vs freedman
 
 ```{r}
-str_split_fixed(EDH_unnested$status, ";", n=3) %>% 
+str_split_fixed(EDH_people$status, ";", n=3) %>% 
   as.data.frame() -> status
 
 status %>% 
@@ -157,9 +181,10 @@ status_counts %>%
   coord_cartesian(xlim=c(0,10000)) +
   labs(x = "Number of instances", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(EDH_tibble), "inscriptions"))) +
   geom_label(aes(label= n)) +
-  theme_linedraw(base_size = 12) +
-  theme_minimal() 
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none")
 
+ggsave("../figures/Status_overview.jpg", width = 12, height = 8) 
 ggsave("../figures/Status_overview.png", width = 12, height = 8) 
 ```
 # Age
@@ -167,47 +192,47 @@ ggsave("../figures/Status_overview.png", width = 12, height = 8)
 ## How many inscriptions have ‘Age’ category?
 
 ```{r}
-EDH_unnested %>% 
+EDH_people %>% 
   dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
-  filter(!is.na(EDH_unnested$`age: years`) | !is.na(EDH_unnested$`age: months`) | !is.na(EDH_unnested$`age: days`) |!is.na(EDH_unnested$`age: hours`))
+  filter(!is.na(EDH_people$`age: years`) | !is.na(EDH_people$`age: months`) | !is.na(EDH_people$`age: days`) |!is.na(EDH_people$`age: hours`))
 ```
 
 
 ## What are the unique values for years
 ```{r}
-unique(EDH_unnested$`age: years`)
+unique(EDH_people$`age: years`)
 ```
 
 ## How many people have their age stated in years
 ```{r}
-sum(!is.na(EDH_unnested$`age: years`))
-EDH_unnested %>% 
+sum(!is.na(EDH_people$`age: years`))
+EDH_people %>% 
   dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
-  filter(!is.na(EDH_unnested$`age: years`))
+  filter(!is.na(EDH_people$`age: years`))
 ```
 
 ## How many people have their age stated in months
 ```{r}
-sum(!is.na(EDH_unnested$`age: months`))
-EDH_unnested %>% 
+sum(!is.na(EDH_people$`age: months`))
+EDH_people %>% 
   dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
-  filter(!is.na(EDH_unnested$`age: months`))
+  filter(!is.na(EDH_people$`age: months`))
 ```
 
 ## How many people have their age stated in days
 ```{r}
-sum(!is.na(EDH_unnested$`age: days`))
-EDH_unnested %>% 
+sum(!is.na(EDH_people$`age: days`))
+EDH_people %>% 
   dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
-  filter(!is.na(EDH_unnested$`age: days`))
+  filter(!is.na(EDH_people$`age: days`))
 ```
 
 ## How many people have their age stated in hours
 ```{r}
-sum(!is.na(EDH_unnested$`age: hours`))
-EDH_unnested %>% 
+sum(!is.na(EDH_people$`age: hours`))
+EDH_people %>% 
   dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>%
-  filter(!is.na(EDH_unnested$`age: hours`))
+  filter(!is.na(EDH_people$`age: hours`))
 ```
 
 
@@ -215,20 +240,20 @@ EDH_unnested %>%
 
 Not ideal method as it skips a lot of textual descriptions
 ```{r}
-summary(as.numeric(EDH_unnested$`age: years`))
-summary(as.numeric(EDH_unnested$`age: months`))
-summary(as.numeric(EDH_unnested$`age: days`))
-summary(as.numeric(EDH_unnested$`age: hours`))
+summary(as.numeric(EDH_people$`age: years`))
+summary(as.numeric(EDH_people$`age: months`))
+summary(as.numeric(EDH_people$`age: days`))
+summary(as.numeric(EDH_people$`age: hours`))
 ```
 
 Better method using regular expressions to detect years and converting them as numeric
 ```{r}
-EDH_unnested %>% 
+EDH_people %>% 
   dplyr::select('age: days', 'age: months', 'age: hours', 'age: years') %>% 
-  mutate(age_years = as.numeric(str_extract(EDH_unnested$'age: years', pattern = "[:digit:]+"))) %>% 
-  mutate(age_months = as.numeric(str_extract(EDH_unnested$'age: months', pattern = "[:digit:]+"))) %>%
-  mutate(age_days = as.numeric(str_extract(EDH_unnested$'age: days', pattern = "[:digit:]+"))) %>%
-  mutate(age_hours = as.numeric(str_extract(EDH_unnested$'age: hours', pattern = "[:digit:]+"))) -> ages
+  mutate(age_years = as.numeric(str_extract(EDH_people$'age: years', pattern = "[:digit:]+"))) %>% 
+  mutate(age_months = as.numeric(str_extract(EDH_people$'age: months', pattern = "[:digit:]+"))) %>%
+  mutate(age_days = as.numeric(str_extract(EDH_people$'age: days', pattern = "[:digit:]+"))) %>%
+  mutate(age_hours = as.numeric(str_extract(EDH_people$'age: hours', pattern = "[:digit:]+"))) -> ages
 ```
 
 ```{r}
@@ -260,11 +285,11 @@ ages <- ages %>%
 
 ```{r}
 
-EDH_age<- EDH_unnested %>% 
-  mutate(age_years = as.numeric(str_extract(EDH_unnested$'age: years', pattern = "[:digit:]+"))) %>% 
-  mutate(age_months = as.numeric(str_extract(EDH_unnested$'age: months', pattern = "[:digit:]+"))) %>%
-  mutate(age_days = as.numeric(str_extract(EDH_unnested$'age: days', pattern = "[:digit:]+"))) %>%
-  mutate(age_hours = as.numeric(str_extract(EDH_unnested$'age: hours', pattern = "[:digit:]+"))) %>% 
+EDH_age<- EDH_people %>% 
+  mutate(age_years = as.numeric(str_extract(EDH_people$'age: years', pattern = "[:digit:]+"))) %>% 
+  mutate(age_months = as.numeric(str_extract(EDH_people$'age: months', pattern = "[:digit:]+"))) %>%
+  mutate(age_days = as.numeric(str_extract(EDH_people$'age: days', pattern = "[:digit:]+"))) %>%
+  mutate(age_hours = as.numeric(str_extract(EDH_people$'age: hours', pattern = "[:digit:]+"))) %>% 
   mutate(months_to_years = age_months / 12) %>% 
   mutate(days_to_years = age_days / 365) %>% 
   mutate(hours_to_years = age_hours / (24*365)) %>% 
@@ -291,7 +316,7 @@ length(na.omit(EDH_age$total_age))/(nrow(EDH_age)/100)
 # Occupation
 ## What are the names of unique values in the 'occupation' attribute?
 ```{r}
-EDH_unnested %>% 
+EDH_people %>% 
   dplyr::filter(occupation == "data available") %>% 
   select()
 ```
@@ -299,25 +324,26 @@ Unfortunately, ant other details about the occupation are not provided.
 
 # Origin
 ```{r}
-origo<- as.data.frame(EDH_unnested$origo) 
+origo<- as.data.frame(EDH_people$origo) 
 origo
 
 origo %>% 
-  filter(`EDH_unnested$origo` != "") %>% 
+  filter(`EDH_people$origo` != "") %>% 
   #mutate(clean_origo = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>%
-  count(`EDH_unnested$origo`, sort=TRUE)
+  count(`EDH_people$origo`, sort=TRUE)
 ```
 
 ## What kind of inscriptions has origo
 ```{r}
-EDH_unnested %>% 
+EDH_full %>% 
   filter(!is.na(origo)) %>% 
-  count(type_of_inscription_clean, sort=T)
+  count(type_of_inscription_clean, sort=T) %>% 
+  mutate(ratio = round(n/(sum(n)/100),2))
 
 ```
 ## What is the findspot vs origo
 ```{r}
-EDH_unnested %>% 
+EDH_full %>% 
   filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
   select(origo, findspot_ancient_clean) %>% 
   count(findspot_ancient_clean, origo, sort=T)
@@ -326,7 +352,7 @@ EDH_unnested %>%
 ## Cleaning origo
 
 ```{r}
-EDH_unnested <- EDH_unnested %>%
+EDH_people <- EDH_people %>%
   mutate(origo_clean = str_replace_all(origo, pattern="[\\*|\\+|\\?|\\!]", replacement="")) %>%
   mutate(origo_clean = str_replace_all(origo_clean, pattern="(\\w+) \\(= (\\w+)\\)", replacement="\\2")) %>%
   mutate(origo_clean = str_replace_all(origo_clean, pattern="gente|genitus|gentis|natus|civis|Civis|civus|natione|nato|regione|domo|domu|cives|cive|civi|ex|verna|tate", replacement="")) %>%
@@ -336,7 +362,7 @@ EDH_unnested <- EDH_unnested %>%
 ```
 
 ```{r}
-EDH_unnested %>%
+EDH_people %>%
   select(origo_clean, id) -> EDH_origo_out
 ```
 
@@ -352,7 +378,7 @@ origo_OR<-read.csv("../data/EDH_origo_in_OR.csv")
 
 
 ```{r}
-EDH_unnested <- cbind(EDH_unnested, origo_clean_OR = origo_OR$origo_clean)
+EDH_people <- cbind(EDH_people, origo_clean_OR = origo_OR$origo_clean)
 ```
 
 ### Saving the new dataset with clean origo to Sciencedata.dk
@@ -369,8 +395,8 @@ library(sdam)
 
 mycred_secret<- readLines("../../../../Desktop/mysecret.txt")
 
-EDH_unnested_json <- jsonlite::toJSON(EDH_unnested, auto_unbox = TRUE)
-jsonlite::write_json(EDH_unnested_json, path="../data/EDH_people_clean_origo_2021-08-25.json")
+EDH_people_json <- jsonlite::toJSON(EDH_people, auto_unbox = TRUE)
+jsonlite::write_json(EDH_people_json, path="../data/EDH_people_clean_origo_2021-08-25.json")
 
 sdam::request("../data/EDH_people_clean_origo_2021-08-25.json", path="/sharingout/648597@au.dk/SDAM_root/SDAM_data/EDH/public", force = TRUE,
         method="PUT", cred=c(mycred_secret[1], mycred_secret[2]))
@@ -378,19 +404,34 @@ sdam::request("../data/EDH_people_clean_origo_2021-08-25.json", path="/sharingou
 remove(mycred_secret)
 ```
 
+# Names
+
+```{r}
+EDH_people %>% 
+  names()
+
+EDH_people %>% 
+  select(name, praenomen, nomen, cognomen, supernomen, tribus, origo) -> names
+
+View(names)
+```
+
+
+
+
 
 ## Mapping inscriptions with origo
 
 ```{r}
-EDH_unnested<- EDH_unnested %>% 
+EDH_people<- EDH_full %>% 
   separate(col = coordinates, into = c("longitude", "latitude"), sep = ",")
 
-EDH_unnested$latitude <- as.numeric(str_replace(EDH_unnested$latitude, pattern = "\\)", replacement=""))
-EDH_unnested$longitude <- as.numeric(str_replace(EDH_unnested$longitude, pattern = "c\\(", replacement=""))
+EDH_people$latitude <- as.numeric(str_replace(EDH_people$latitude, pattern = "\\)", replacement=""))
+EDH_people$longitude <- as.numeric(str_replace(EDH_people$longitude, pattern = "c\\(", replacement=""))
 ```
 
 ```{r}
-EDH_unnested %>% 
+EDH_people %>% 
   filter(!is.na(origo)) -> has_origo
 ```
 
@@ -445,11 +486,17 @@ heat_origo <- has_origo %>%
   #addProviderTiles("CartoDB.VoyagerNoLabels") %>%
   setView( lng = 12.9239625, lat = 41.9515694, zoom = 4 ) %>%
   #setMaxBounds(lat1=40.633977, lng1 =-4.227926 , lat2=35.133882 , lng2=40.882336) %>%
+  addLegend(position = "bottomright",
+  colors = c("Red"),
+  labels = c("Inscriptions"), opacity = 1,
+  title = "Inscriptions with origo statement (EDH, n= 2648)" 
+) %>% 
+  addScaleBar(position="bottomleft") %>% 
  
  addHeatmap(lng = ~as.numeric(na.omit(has_origo$longitude)), lat = ~as.numeric(na.omit(has_origo$latitude)), 
             intensity = 0.5, layerId = NULL, group = NULL, minOpacity = 0.5, #max = 1,
   radius = 2, blur = 2, gradient = "YlOrRd", cellSize = 1,
-  )
+  ) 
 
 heat_origo
 ```
@@ -463,10 +510,19 @@ heat_origo
 
 # Special focus - Funerary inscriptions
 
+```{r}
+#merging of age dataset with other attributes from tibble
+
+EDH_fun_age <- left_join(EDH_tibble, EDH_age, by = c("id" = "id"))
+
+```
+
+
+
 ## Age
 
 ```{r}
-EDH_age %>% 
+EDH_fun %>% 
   filter(type_of_inscription_clean == "epitaph") -> epitaph
 ```
 
@@ -580,9 +636,10 @@ EDH_age %>%
   #mutate(agegroup_sorted = reorder(agegroup, n)) %>% 
   ggplot() +
   geom_bar(mapping = aes(x = agegroup, fill = agegroup))+
-  labs(x = "Age group (years)", y = "Number of individuals", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))
-  #+ geom_label(aes(label = agegroup), colour = "black", fontface = "bold", hjust = -0.4)
-  
+  labs(x = "Age group (years)", y = "Number of individuals", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))+
+  theme_minimal()
+  #+ geom_label(aes(label = agegroup), colour = "black", fontface = "bold", hjust = -0.4) +
+
 
   
 ggsave("../figures/Age_groups_epitaphs.png", width = 12, height = 8) 
@@ -590,13 +647,13 @@ ggsave("../figures/Age_groups_epitaphs.png", width = 12, height = 8)
 ### Children younger than 10
 
 ```{r}
-EDH_age<- EDH_age %>% 
+EDH_fun<- EDH_fun %>% 
   mutate(age10 = ifelse(total_age < 10, "under10", "over10"))
 ```
 
 #### Province
 ```{r, fig.height=14, fig.width=10}
-EDH_age %>% 
+EDH_fun %>% 
   count(age10, province_label_clean) %>% 
   ggplot(aes(fill=age10, y=province_label_clean, x=n)) +
   geom_bar(position="fill", stat="identity") +
@@ -609,7 +666,7 @@ EDH_age %>%
 ```
 
 ```{r}
-EDH_age10<- EDH_age %>% 
+EDH_age10<- EDH_fun %>% 
   count(age10, province_label_clean, sort=F) %>% 
   spread(key=age10, value=n) 
 
@@ -637,12 +694,12 @@ EDH_under10 %>%
 
 ### Rounding of age on inscriptions
 ```{r}
-EDH_age %>% 
+EDH_fun %>% 
   dplyr::select(total_age) %>% 
   filter(total_age == str_subset(total_age, "5$|0$")) -> rounded_age
 
 
-all_ages <- as.data.frame(na.omit(EDH_age$total_age))
+all_ages <- as.data.frame(na.omit(EDH_fun$total_age))
 nrow(rounded_age)/(nrow(all_ages)/100)
 ```
 
@@ -654,8 +711,8 @@ rounded_age %>%
 
 ```{r, fig.width=10}
 all_ages %>% 
-  count(`na.omit(EDH_age$total_age)`) %>% 
-  mutate(total_age =`na.omit(EDH_age$total_age)`) %>% 
+  count(`na.omit(EDH_fun$total_age)`) %>% 
+  mutate(total_age =`na.omit(EDH_fun$total_age)`) %>% 
   ggplot(aes(x=total_age, y =n, colour=-n)) +
   geom_point(alpha=0.5) +
   geom_smooth() +
@@ -675,7 +732,7 @@ all_ages %>%
 Adapted from https://klein.uk/teaching/viz/datavis-pyramids/
 
 ```{r}
-EDH_age %>% 
+EDH_fun %>% 
   dplyr::select(gender, total_age) %>% 
   na.omit(gender) %>% 
   na.omit(total_age)  %>% 
@@ -740,7 +797,7 @@ pyramid_age <- ggplot(population_age, aes(x = orderedage, y = population, fill =
   geom_bar(aes(order), data = subset(population_age, gender == "female"), stat = "identity") +
   geom_bar(aes(order), data = subset(population_age, gender == "male"), stat = "identity") + 
   #scale_y_continuous(labels = c("250", "0", "250")) + 
-  xlab("Age groups")+
+  xlab("age groups")+
   scale_x_discrete(labels = xabels)+  # Still does not show!! But no Error. jeez.
   coord_flip()
 pyramid_age
@@ -748,7 +805,7 @@ pyramid_age
 
 # Adela Different and Working (for change) Alternative
 ```{r}
-EDH_age %>% 
+EDH_fun %>% 
   dplyr::select(gender, total_age) %>% 
   na.omit(gender) %>% 
   na.omit(total_age)  %>% 
@@ -789,9 +846,12 @@ population_age$population <- ifelse(population_age$gender == "male", -1*populati
 pyramid_age <- ggplot(population_age, aes(x = agegroups, y = population, fill = gender)) + 
   geom_bar(data = subset(population_age, gender == "female"), stat = "identity") +
   geom_bar(data = subset(population_age, gender == "male"), stat = "identity") + 
+  theme_minimal() +
   #scale_y_continuous(labels = c("250", "0", "250")) + 
   coord_flip()
 pyramid_age
+
+ggsave("../figures/Age_pyramid.jpg", width = 8, height = 8)
 ```
 
 
@@ -906,8 +966,9 @@ epitaph %>%
   theme_minimal() +
   theme(text = element_text(size=16)) +
   labs(y="Gender category", x="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = ggtitle(paste("n =", nrow(epitaph), "inscriptions" ))) +
-  geom_label(aes(label= ratio_total), hjust = -0.1) 
+  geom_label(aes(label= ratio_total), hjust = -0.1) +
 #+ geom_text(aes(label = ratio_total)) 
+  theme(legend.position = "none")
 
 ggsave("../figures/Gender_epitaphs.png", width = 8, height = 8)
 ```
@@ -957,9 +1018,41 @@ ggsave("../figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
 ```
 
 
+## Status on funerary inscriptions
+
+```{r}
+
+```
 
 
+```{r}
+str_split_fixed(epitaph$status, ";", n=3) %>% 
+  as.data.frame() -> status_fun
 
+status_counts_fun<- status_fun %>% 
+  cbind(combined = c(status_fun$V1,status_fun$V2,status_fun$V3)) %>% 
+  filter(combined != "") %>% 
+  mutate(combined_clean = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>% 
+  mutate(combined_clean = str_replace_all(string = combined_clean, pattern = "^ ", replacement = "")) %>% 
+  count(combined_clean, sort=TRUE)
+
+status_counts_fun 
+```
+
+```{r}
+status_counts_fun %>% 
+  mutate(combined_clean = reorder(combined_clean, n)) %>% 
+  ggplot(aes(y=combined_clean, x=n, fill=combined_clean)) +
+  geom_col(width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,5000)) +
+  labs(x = "Number of instances", y = "Status category", title = "Status on funerary inscriptions", subtitle = ggtitle(paste("n =", nrow(epitaph), "inscriptions"))) +
+  geom_label(aes(label= n)) +
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none")
+
+ggsave("../figures/Status_funerary_overview.jpg") #width = 16, height = 12) 
+ggsave("../figures/Status__funerary_overview.png", width = 16, height = 12) 
+```
 
 
 
