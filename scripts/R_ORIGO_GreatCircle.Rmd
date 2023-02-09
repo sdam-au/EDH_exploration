@@ -49,10 +49,19 @@ orig_dest_lines <- origo %>%
   bind_cols(origo) %>% 
   select(-geometry...18) # update column name to the one of a point list as we keep the linestring
 
-orig_dest_lines %>% 
-  group_by(country) %>% 
+origo %>% 
+  group_by(origo_clean) %>% 
   tally() %>% 
   arrange(desc(n))
+
+# Explore
+origo %>% 
+  filter(origo_clean == "Antiochia")
+
+library(mapview)
+origo %>% 
+  st_as_sf(coords = c("start_long", "start_lat"), crs = 4326) %>% 
+  mapview()
 ```
 
 ```{r}
