@@ -131,6 +131,8 @@ paths <- paths %>%
   mutate(normalized_distance = round(distance/max(distance),2)) %>% 
   ungroup()
 
+saveRDS(paths, "../data/BDpaths.rds")
+st_write(paths, "../data/BDpaths.geojson")
 ```
 
 
