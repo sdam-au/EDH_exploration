@@ -1,0 +1,216 @@
+---
+title: "Origo_GClinestrings"
+author: "Adela Sobotkova"
+date: "2023-02-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sf)
+library(sfarrow)
+```
+
+## Get origo data
+
+```{r}
+EDH <- read_rds("../data/large_data/EDH_dated_sim.rds") # This is NOT EDH!! but GIRE or something like that!!
+
+LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
+names(LIRE)
+
+names(EDH)
+geoorigo <- read_csv("../data/origo_df.csv")
+origo <- geoorigo %>% 
+  filter(!is.na(pleiades_Latitude)) %>% 
+  left_join(LIRE[c(14:15,19,34, 63,85,87)], by = c("hd_nr"="EDH.ID")) %>% 
+  filter(!is.na(Latitude)) %>% 
+  rename(start_lat = pleiades_Latitude, start_long = pleiades_Longitude,
+         end_lat = Latitude, end_long = Longitude)
+  
+
+which(is.na(origo$geometry))
+which(is.na(st_coordinates(st_sf(origo))))
+```
+
+Problem right at the beginning, where EDH_Dated_sims.rds Is not supposed to have PHI_ID!! Something I broke when gnerating simulations last week. Rerun temporal analysis for associations and patrimonioum
+
+## Create linestrings
+```{r}
+
+orig_dest_lines <- origo %>%
+  select(start_long, start_lat, end_long, end_lat) %>% 
+  purrr::transpose() %>% 
+  purrr::map(~ matrix(flatten_dbl(.), nrow = 2, byrow = TRUE)) %>% 
+  purrr::map(st_linestring) %>%
+  st_sfc(crs = 4326) %>%
+  st_sf(geometry = .)%>%
+  bind_cols(origo) %>% 
+  select(-geometry...18) # update column name to the one of a point list as we keep the linestring
+
+orig_dest_lines %>% 
+  group_by(country) %>% 
+  tally() %>% 
+  arrange(desc(n))
+```
+
+```{r}
+
+# WOrld map? Suboptimal
+world_map <- rnaturalearth::ne_countries(scale = 'small', returnclass = c("sf"), country = unique(LIRE$country_clean))
+plot(world_map$geometry)
+
+# Pleiades provinces
+romanEmpire <- read_sf("../data/pleiades_regions.geojson")
+
+orig_dest_lines %>% 
+  filter(province_label_clean == "Serbia") %>% 
+  ggplot()+
+  borders()+
+  geom_sf(col = "blue")+
+  borders()+
+  theme_minimal()+
+  coord_sf(datum = NA)
+```
+Making Great Circles Work
+
+borrowing from http://jsmayorga.com/post/mapping-the-global-network-of-transnational-fisheries/
+
+
+The next step is to divide our LINESTRING - which currently has only two points - into multiple smaller segments along the corresponding great circle path. These great circles are what you often seen on airline magazines and represent the shortest path between two points on the surface of a sphere. The sf package has a handy function called st_segmentize() that does this and we can specify the length of each segment.
+
+```{r}
+orig_dest_lines <- orig_dest_lines %>%
+  st_sf() %>% 
+  st_segmentize(units::set_units(10, km)) 
+
+```
+Unpack linestrings into a dataframe to visualize length of the linestrines and represent distance travelled.
+
+```{r}
+st_coordinates(st_cast(orig_dest_lines,"MULTILINESTRING")$geometry) %>% 
+  as_data_frame() 
+```
+
+```{r}
+install.packages("zeallot")
+library(zeallot)
+c(orig_dest_lines$line_id, orig_dest_lines$coords) %<-% (
+  st_coordinates(st_cast(orig_dest_lines,"MULTILINESTRING")$geometry) %>% 
+  as_data_frame() %>% 
+  rename(subline_id = L1,data = -L2) %>%   
+  nest(-L2)
+  )
+```
+
+
+```{r}
+paths <- orig_dest_lines%>% 
+  sf::st_set_geometry(NULL) %>% 
+  unnest(cols = c(coords)) %>% 
+  mutate_at(vars(X,Y), round,2)
+```
+
+To calculate the distance traveled, we use the Haversine method, implemented in the function distHaversine() from the geosphere package. We wrap that function and then map it along our data using the pmap() function. Finally we re-scale the distance from [0,1] for each path.
+
+```{r}
+
+estimate_distance_traveled <- function(start_long, start_lat, current_long, current_lat){
+  
+  start_coords <- c(start_long, start_lat)
+  current_coords <- c(current_long, current_lat) # copy as is, these columns are created within haversine
+  
+  geosphere::distHaversine(current_coords,start_coords)
+  
+}
+
+paths <- paths %>% 
+  mutate(distance = purrr::pmap_dbl(list(start_long, start_lat, X, Y), estimate_distance_traveled)) %>% 
+  group_by(line_id) %>% 
+  mutate(normalized_distance = round(distance/max(distance),2)) %>% 
+  ungroup()
+
+```
+
+
+```{r}
+origo %>%
+                 group_by(start_long,start_lat) %>%
+                 summarize(number = n())
+```
+
+## Final plotting
+
+```{r}
+BDnetwork <- ggplot() +
+   geom_sf(data = romanEmpire, size = .2, fill = "grey", col = "grey") +
+   geom_point(data = origo %>%
+                 group_by(start_long,start_lat) %>%
+                 summarize(number = n()),
+               aes(start_long, start_lat, size = number), col = "orange", shape = 21, stroke = 1.5)+
+   geom_path(data = paths,
+             aes(X, Y, group = interaction(line_id,subline_id), 
+                 col = normalized_distance),  show.legend = NA) +
+   #scale_size_continuous(range = c(0.5,10), breaks = c(1000, 5000, 10000, 20000, 30000), labels = comma) +
+   #scale_alpha_continuous(range = c(0.3,1))+
+   scale_color_gradient2(low = "#0571b0", mid = "#0571b0", midpoint = .5, high = "#b2182b")+
+   theme_minimal()+
+   theme(legend.position = c(0.2,0), 
+         legend.direction = "horizontal",
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         panel.background = element_rect(fill = "white",
+                                 colour = "white"),
+         axis.title = element_blank(),
+         axis.text = element_blank(),
+         axis.ticks = element_blank(),
+         plot.margin = margin(0, 0, 0, 0, "cm"),
+         plot.caption = element_text(colour = "gray", face = "bold", size = 12, vjust = 9),
+         plot.title = element_text(face = "bold", size = 14)) +
+   guides(colour =  FALSE,
+          alpha = F,
+          size = guide_legend(title.position = "bottom",title = "Number of travellers", title.hjust = 0.5))+
+   scale_y_continuous(expand = c(.1,0)) + 
+   scale_x_continuous(expand = c(.01,0.01))+
+   labs(title = "Birth to Death Movement in the Roman Empire",
+        caption = "Line color indicates the origin (blue) and final destination (red) of Roman-era travellers. \n
+        Circle size is proportional to the total number of people originating from a location. \
+        Data from SDAM and Pleiades")
+BDnetwork.png
+ggsave("../figures/BDnetwork.png")
+```
+
+# Kyle Walker approach
+```{r}
+library(geosphere)
+
+flows <- gcIntermediate(df3[,4:5], df3[,6:7], sp = TRUE, addStartEnd = TRUE)
+
+
+
+```
+
+```{r libraries}
+# Load packages
+library(tidyverse)
+library(sp)
+library(geosphere)
+library(sf)
+library(rnaturalearth)
+
+# Load the background maps
+countries_sp <- ne_countries(scale = "medium")
+countries_sf <- ne_countries(scale = "medium", returnclass = "sf")
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

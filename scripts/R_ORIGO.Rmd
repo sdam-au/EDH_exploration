@@ -83,10 +83,10 @@ EDH_people %>%  # was EDH_full
 
 ```
 
-Origo features mostly in epitaphs followed by honorific and votive inscriptions, lists and military diplomas. Epitaphs are personal, while most others can be also more public.
+Expressions of 'origo' feature mostly in epitaphs followed by honorific and votive inscriptions, lists and military diplomas. Epitaphs are personal, while most others can be also more public.
 
-## What status did the bearers have?
-Some people declare multiple so this is the maximum boradest picture.
+## What status did the people have?
+Some people declare multiple statuses so this is the maximum broadest picture.
 ```{r}
 str_split_fixed(has_origo$status, ";", n=3) %>% 
   as.data.frame() -> status
@@ -130,7 +130,7 @@ So this is tricky as the `origo` is an ancient placename that does not come with
 Also, out of 92427 people in the EDH inscriptions, only 2648 (2.8%) mention origo in their message
 Out of these 2648 locations there are 673 unique geocoded placenames.
 
-## Bring in data geocoded by Vojtech 
+## Bring in json data from sciencedk geocoded by Vojtech in 2021 
 in py_geocode_origo
 The json output has 2648 rows just like there are people with origo in the EDH dataset, however only 676 unique origo ( presumed birthplace) locations have been successfully geocoded, adn three of those lack lat/long of the findspot (presumed deathplace)
 
@@ -179,8 +179,7 @@ EDH_origo
 # EDH_origo
 ```
 
-### Spatialize origo
-
+### Spatialize origo - Create Birth places
 
 Eliminate missing coordinates
 ```{r}
@@ -207,8 +206,9 @@ EDHg_findspot <- EDH_origo %>%
 Let's now draw linestrings between the origin and final findspot, our proxies between the birth and death places of each of the 676 persons here.
 We need a matrix of both sets of points
 
-## Connect Birth-Death places 
-Great circles in geodetic space
+## Create Birth-Death place linestrings
+
+We connect the origo (birthplace) column coordinates with findspot (deathplace) by great circles in geodetic space
 
 ```{r}
 lines <- st_sfc(mapply(function(a,b){
@@ -220,8 +220,6 @@ st_crs(lines) <- 4326
 library(mapview)
 mapview(lines)
 ```
-
-
 
 
 ## Calculate as-the-crow-flies distances
