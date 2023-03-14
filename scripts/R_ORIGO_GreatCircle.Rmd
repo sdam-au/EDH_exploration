@@ -142,6 +142,7 @@ paths <- paths %>%
 
 saveRDS(paths, "../data/BDpaths.rds")
 st_write(paths, "../data/BDpaths.geojson")
+paths <- readRDS("../data/BDpaths.rds")
 ```
 
 
@@ -216,12 +217,42 @@ countries_sf <- ne_countries(scale = "medium", returnclass = "sf")
 
 ```
 
-## Including Plots
+## Grab manually geocoded origo from SDAM google (mostly finished 14 March)
 
-You can also embed plots, for example:
+Load the manually geocoded origo information, check certainty, convert into a spatial object and display in mapview so that you see the distribution of the certain vs wild-guess allocations!
+```{r}
+# Load data from google
+library(googlesheets4)
+gs4_deauth() # deauthorize or face authentication token errors
+geocoded_m <- read_sheet("https://docs.google.com/spreadsheets/d/17ibTaRJHHevY2wVsx9aK-NEd54fGho69l5dGJNE3XBA/edit#gid=1089791340", 
+                         range = "2023WORKSHEET")
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Quick map to see if points are roughly in place
+library(leaflet)
+leaflet() %>% 
+  addCircles(geocoded_m$pleiades_Longitude, 
+             geocoded_m$pleiades_Latitude)
+
+# Tally by certainty to see how many were easily geocoded 
+names(geocoded_m)
+geocoded_m %>% 
+  group_by(Certainty) %>% 
+  tally()
+```
+Ok, so we have nearly 2000 geocoded with certainty and additional 500 uncertain ones. The remaining 500 might need to be reviewed and the 2000 certain ones could also use a spotcheck as the digitisation is done by a volunteer. 
+```{r}
+# Spatialize into an sf object grabbing only valid Lat/Longs
+
+origo4326 <- geocoded_m %>% 
+  filter(!is.na(pleiades_Longitude)) %>% 
+  filter(Certainty!="wild guess")
+  st_as_sf(coords = c("pleiades_Longitude", "pleiades_Latitude"), crs = 4326)
+
+  
+# Plot the results in mapview so as to see the distribution of certainties in space   
+  
+library(mapview)  
+mapview(origo4326, zcol = "Certainty")
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
