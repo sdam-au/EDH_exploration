@@ -1,271 +1,709 @@
 ---
+
 title: "Origo_GClinestrings"
+
 author: "Adela Sobotkova"
+
 date: "2023-02-09"
+
 output: html_document
+
 ---
-This script contains an elaboration of birth and death data for origo and findspots of inscriptions and needs cleaning up 
+
+This script contains an elaboration of birth and death data for origo and findspots of inscriptions and needs cleaning up
+
 ```{r setup, include=FALSE}
+
 knitr::opts_chunk$set(echo = TRUE)
+
 library(tidyverse)
+
 library(sf)
+
 library(sfarrow)
+
 ```
 
-## Get origo data
-Get origo data fro EDH and combine it with LIRE to get findspot data and create 4 columns for birth Lat/Long (origo) and destination Lat Long (from findspot)
-```{r}
-LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
-names(LIRE)
+ 
+ 
+# Get data
 
-names(EDH)
-geoorigo <- read_csv("../data/origo_df.csv")
-geoorigo <- geocoded_m
-origo <- geoorigo %>% 
-  filter(!is.na(pleiades_Latitude)) %>% 
-  left_join(LIRE[c(14:15,19,34, 63,85,87)], by = c("hd_nr"="EDH.ID")) %>% 
-  filter(!is.na(Latitude)) %>% 
-   filter(!is.na(pleiades_Longitude)) %>% 
-  rename(start_lat = pleiades_Latitude, start_long = pleiades_Longitude,
-         end_lat = Latitude, end_long = Longitude)
+```{r}
+# Pleiades provinces
+
+romanEmpire <- read_sf("../data/pleiades_regions.geojson")
+
+LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
+
+```
+ 
+## Grab manually geocoded origo from SDAM google (mostly finished 14 March)
+ 
+Load the manually geocoded origo information, check certainty, convert into a spatial object and display in mapview so that you see the distribution of the certain vs wild-guess allocations!
+
+```{r}
+
+# Load data from google
+
+library(googlesheets4)
+
+gs4_deauth() # deauthorize or face authentication token errors
+
+geocoded_m <- read_sheet("https://docs.google.com/spreadsheets/d/17ibTaRJHHevY2wVsx9aK-NEd54fGho69l5dGJNE3XBA/edit#gid=1089791340",
+
+                         range = "2023WORKSHEET")
+
+ 
+
+# Quick map to see if points are roughly in place
+
+library(leaflet)
+
+leaflet() %>%
+
+  addTiles() %>%
+
+  addCircles(geocoded_m$pleiades_Longitude,
+
+             geocoded_m$pleiades_Latitude) %>%
+
+  addPolygons(data = romanEmpire)
+
+ 
+
+# Tally by certainty to see how many were easily geocoded
+
+names(geocoded_m)
+
+geocoded_m %>%
+
+  group_by(Certainty) %>%
+
+  tally()
+
+```
+
+Ok, so we have nearly 2000 geocoded birth places with certainty and additional 500 uncertain ones. The remaining 500 might need to be reviewed and the 2000 certain ones could also use a spotcheck as the digitisation is done by a volunteer.
+
+```{r}
+
+# Spatialize into an sf object grabbing only valid Lat/Longs
+
+names(geocoded_m)
+
+origo4326 <- geocoded_m[,c(1:11,17)] %>%
+
+  filter(!is.na(pleiades_Longitude)) %>%
+
+  #filter(Certainty!="wild guess")
+
+  st_as_sf(coords = c("pleiades_Longitude", "pleiades_Latitude"), crs = 4326)
+
+ 
+
+ 
+
+names(origo4326)
+
+# Plot the results in mapview so as to see the distribution of certainties in space  
+
   
 
+library(mapview) 
+
+mapview(origo4326, zcol = "Certainty")
+
+ 
+
+```
+
+ 
+
+## Get origo data
+
+Get origo data fro EDH and combine it with LIRE to get findspot data and create 4 columns for birth Lat/Long (origo) and destination Lat Long (from findspot)
+
+```{r}
+
+#geoorigo <- read_csv("../data/origo_df.csv")
+
+geoorigo <- geocoded_m[,c(1:11,17)]
+
+
+# Combine with LIRE for attributes andeliminate invalid geospatial points
+origo <- geoorigo %>%
+
+  filter(!is.na(pleiades_Latitude)) %>%
+
+  left_join(LIRE[c(14:15,19,34, 63,85,87)], by = c("hd_nr"="EDH.ID")) %>%
+
+  filter(!is.na(Latitude)) %>%
+
+   filter(!is.na(pleiades_Longitude)) %>%
+
+  rename(start_lat = pleiades_Latitude, start_long = pleiades_Longitude,
+
+         end_lat = Latitude, end_long = Longitude)
+
+ 
+
+ 
+
 which(is.na(origo$geometry))
+
 which(is.na(st_coordinates(st_sf(origo))))
+
 which(is.na(origo$end_lat))
+
 which(is.na(origo$end_long))
+
 which(is.na(origo$start_long))
 
+ 
+# Calculate frequency of origins
+origo %>%
+  group_by(origo_clean) %>%
+  tally() %>% 
+  arrange(desc(n))  # there are 985 unique places
+
 names(origo)
+
+origo_unique <-origo %>%
+ # group_by(origo_clean, start_lat,start_long)
+  group_by(origo_clean) %>%
+  summarize(number = n())
+
+# Add this frequency to the origo
+origo$origo_frequency <- origo %>% 
+  left_join(orig_frequency, by = "origo_clean") %>% 
+  pull(n)
+
+unique(origo$origo_frequency)
 ```
 
 Problem right at the beginning, where EDH_Dated_sims.rds Is not supposed to have PHI_ID!! Something I broke when gnerating simulations last week. Rerun temporal analysis for associations and patrimonioum
 
+ 
+
 ## Create linestrings
+
 Create lines connecting the birth and death locations.
+
 ```{r}
 
 orig_dest_lines <- origo %>%
-  select(start_long, start_lat, end_long, end_lat) %>% 
-  purrr::transpose() %>% 
-  purrr::map(~ matrix(flatten_dbl(.), nrow = 2, byrow = TRUE)) %>% 
+
+  select(start_long, start_lat, end_long, end_lat) %>%
+
+  purrr::transpose() %>%
+
+  purrr::map(~ matrix(flatten_dbl(.), nrow = 2, byrow = TRUE)) %>%
+
   purrr::map(st_linestring) %>%
+
   st_sfc(crs = 4326) %>%
+
   st_sf(geometry = .)%>%
-  bind_cols(origo) %>% 
-  select(-geometry...31) # update column name to that of the name of the geometry (see with names(orig_dest_lines))
 
+  bind_cols(origo) %>%
 
-origo %>% 
-  group_by(origo_clean) %>% 
-  tally() %>% 
-  arrange(desc(n))
+  select(-geometry...20) %>% # update last column name (usually geometry...total col number) . You can inspect the bind_cols(origo) result with names(orig_dest_lines)
 
-# Explore
-origo %>% 
+  st_sf()
+ 
+
+# Explore 10 records from places called Antioch (to see if Antioch has multiple versions)
+origo %>%
   filter(origo_clean == "Antiochia")
 
+ 
+# View the lines
 library(mapview)
-origo %>% 
-  st_as_sf(coords = c("start_long", "start_lat"), crs = 4326) %>% 
-  mapview()
+
+origo %>%
+
+  st_as_sf(coords = c("start_long", "start_lat"), crs = 4326) %>%
+
+  mapview(zcol="Certainty") + mapview(orig_dest_lines)
+
 ```
 
-Plot these linestrings over Roman provinces using Pleiades regions data
-```{r}
+ 
 
-# WOrld map? Suboptimal
-world_map <- rnaturalearth::ne_countries(scale = 'small', returnclass = c("sf"), country = unique(LIRE$country_clean))
-plot(world_map$geometry)
+To plot these linestrings over Roman provinces, use Pleiades regions data
 
-# Pleiades provinces
-romanEmpire <- read_sf("../data/pleiades_regions.geojson")
+```{r regions}
+leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(data=romanEmpire) %>% 
+  addPolylines(data = orig_dest_lines, opacity = 0.1, color = "grey") %>% 
+  addCircles(lng = origo$start_long, lat = origo$start_lat, radius=log(origo$origo_frequency), color = "red", group = "events")
 
-orig_dest_lines %>% 
-  filter(province_label_clean == "Serbia") %>% 
-  ggplot()+
-  borders()+
-  geom_sf(col = "blue")+
-  borders()+
-  theme_minimal()+
-  coord_sf(datum = NA)
 ```
+
+ 
 
 ## Making Great Circles Work
 
+ 
+
 borrowing from http://jsmayorga.com/post/mapping-the-global-network-of-transnational-fisheries/
-
-
 The next step is to divide our LINESTRING - which currently has only two points - into multiple smaller segments along the corresponding great circle path. These great circles are what you often seen on airline magazines and represent the shortest path between two points on the surface of a sphere. The sf package has a handy function called st_segmentize() that does this and we can specify the length of each segment.
 
+ 
+
 ```{r}
+
 orig_dest_lines <- orig_dest_lines %>%
-  st_sf() %>% 
-  st_segmentize(units::set_units(10, km)) 
+
+  st_sf() %>%
+
+  st_segmentize(units::set_units(10, km))
+
+ 
 
 ```
+
 Unpack linestrings into a dataframe to visualize length of the linestrines and represent distance travelled.
 
-```{r}
-st_coordinates(st_cast(orig_dest_lines,"MULTILINESTRING")$geometry) %>% 
-  as_data_frame() 
-```
+ 
 
 ```{r}
-install.packages("zeallot")
+
+st_coordinates(st_cast(orig_dest_lines,"MULTILINESTRING")$geometry) %>%
+
+  as_data_frame()
+
+```
+
+ 
+
+```{r}
+
+#install.packages("zeallot")
+
 library(zeallot)
+
 c(orig_dest_lines$line_id, orig_dest_lines$coords) %<-% (
-  st_coordinates(st_cast(orig_dest_lines,"MULTILINESTRING")$geometry) %>% 
-  as_data_frame() %>% 
-  rename(subline_id = L1,data = -L2) %>%   
+
+  st_coordinates(st_cast(orig_dest_lines,"MULTILINESTRING")$geometry) %>%
+
+  as_data_frame() %>%
+
+  rename(subline_id = L1,data = -L2) %>%  
+
   nest(-L2)
+
   )
+
 ```
 
+ 
+
+ 
 
 ```{r}
-paths <- orig_dest_lines%>% 
-  sf::st_set_geometry(NULL) %>% 
-  unnest(cols = c(coords)) %>% 
+
+paths <- orig_dest_lines%>%
+
+  sf::st_set_geometry(NULL) %>%
+
+  unnest(cols = c(coords)) %>%
+
   mutate_at(vars(X,Y), round,2)
+
 ```
+
+ 
 
 To calculate the distance traveled, we use the Haversine method, implemented in the function distHaversine() from the geosphere package. We wrap that function and then map it along our data using the pmap() function. Finally we re-scale the distance from [0,1] for each path.
 
+ 
+
 ```{r}
+
 library(geosphere)
+
 estimate_distance_traveled <- function(start_long, start_lat, current_long, current_lat){
-  
+
+ 
+
   start_coords <- c(start_long, start_lat)
+
   current_coords <- c(current_long, current_lat) # copy as is, these columns are created within haversine
-  
+
+ 
+
   geosphere::distHaversine(current_coords,start_coords)
-  
+
+ 
+
 }
 
-paths <- paths %>% 
-  mutate(distance = purrr::pmap_dbl(list(start_long, start_lat, X, Y), estimate_distance_traveled)) %>% 
-  group_by(line_id) %>% 
-  mutate(normalized_distance = round(distance/max(distance),2)) %>% 
+ 
+
+paths <- paths %>%
+
+  mutate(distance = purrr::pmap_dbl(list(start_long, start_lat, X, Y), estimate_distance_traveled)) %>%
+
+  group_by(line_id) %>%
+
+  mutate(normalized_distance = round(distance/max(distance),2)) %>%
+
   ungroup()
 
-saveRDS(paths, "../data/BDpaths.rds")
+ 
+
+#saveRDS(paths, "../data/BDpaths.rds")
+
 st_write(paths %>% select(id:pleiades_title,end_lat:normalized_distance), "../data/BDpaths2000.geojson", append =FALSE)
+
 paths
+
 paths <- readRDS("../data/BDpaths.rds")
+
 ```
 
-
-```{r}
-origo %>%
-                 group_by(start_long,start_lat) %>%
-                 summarize(number = n())
-```
+ 
 
 ### Final plotting of paths with ggplot
 
+
 ```{r}
+
 BDnetwork <- ggplot() +
+
    geom_sf(data = romanEmpire, size = .2, fill = "grey", col = "grey") +
+
    geom_point(data = origo %>%
+
                  group_by(start_long,start_lat) %>%
+
                  summarize(number = n()),
+
                aes(start_long, start_lat, size = number), col = "orange", shape = 21, stroke = 1.5)+
+
    geom_path(data = paths,
-             aes(X, Y, group = interaction(line_id,subline_id), 
+
+             aes(X, Y, group = interaction(line_id,subline_id),
+
                  col = normalized_distance),  show.legend = NA) +
+
    #scale_size_continuous(range = c(0.5,10), breaks = c(1000, 5000, 10000, 20000, 30000), labels = comma) +
+
    #scale_alpha_continuous(range = c(0.3,1))+
+
    scale_color_gradient2(low = "#0571b0", mid = "#0571b0", midpoint = .5, high = "#b2182b")+
+
    theme_minimal()+
-   theme(legend.position = c(0.2,0), 
+
+   theme(legend.position = c(0.2,0),
+
          legend.direction = "horizontal",
+
          panel.grid.major = element_blank(),
+
          panel.grid.minor = element_blank(),
+
          panel.background = element_rect(fill = "white",
+
                                  colour = "white"),
+
          axis.title = element_blank(),
+
          axis.text = element_blank(),
+
          axis.ticks = element_blank(),
+
          plot.margin = margin(0, 0, 0, 0, "cm"),
+
          plot.caption = element_text(colour = "gray", face = "bold", size = 12, vjust = 9),
+
          plot.title = element_text(face = "bold", size = 14)) +
+
    guides(colour =  FALSE,
+
           alpha = F,
+
           size = guide_legend(title.position = "bottom",title = "Number of travellers", title.hjust = 0.5))+
-   scale_y_continuous(expand = c(.1,0)) + 
+
+   scale_y_continuous(expand = c(.1,0)) +
+
    scale_x_continuous(expand = c(.01,0.01))+
+
    labs(title = "Birth to Death Movement in the Roman Empire",
+
         caption = "Line color indicates the origin (blue) and final destination (red) of Roman-era travellers. \n
+
         Circle size is proportional to the total number of people originating from a location. \
+
         Data from SDAM and Pleiades")
+
 BDnetwork
+
 ggsave("../figures/BDnetwork.png")
+
 ```
+
 ## Great circles with ggplot()
 
+ 
+
 ```{r}
-ggplot()+
-  geom_sf(paths)
+
+ggplot(orig_dest_lines)+
+
+  geom_sf()+
+
+  geom_sf(data=romanEmpire, alpha = 0.3)
+
 ```
 
-## Great circles with geom_arc()
+ 
+
+## Great circles with geom_arc() DOES NOT WORK
+
+ 
 
 Load the linepoints generated by Vojtech and see if I can make geom_arc() out of them
+
 https://ggforce.data-imaginist.com/reference/geom_arc.html#examples
+
 ```{r}
+
 library(ggforce)
+
 arcs <- data.frame(
+
   start = seq(0, 2 * pi, length.out = 11)[-11],
+
   end = seq(0, 2 * pi, length.out = 11)[-1],
+
   r = rep(1:2, 5)
+
 )
 
+ 
 # Behold the arcs
+
 ggplot(arcs) +
+
   geom_arc(aes(x0 = 0, y0 = 0, r = r, start = start, end = end,
+
                linetype = factor(r)))
 
+
+
 ```
 
-## Grab manually geocoded origo from SDAM google (mostly finished 14 March)
+ 
 
-Load the manually geocoded origo information, check certainty, convert into a spatial object and display in mapview so that you see the distribution of the certain vs wild-guess allocations!
+ 
+
+ 
+
+## SANKEY BY PROVINCE
+
+ 
+
+Province of findspot
+
 ```{r}
-# Load data from google
-library(googlesheets4)
-gs4_deauth() # deauthorize or face authentication token errors
-geocoded_m <- read_sheet("https://docs.google.com/spreadsheets/d/17ibTaRJHHevY2wVsx9aK-NEd54fGho69l5dGJNE3XBA/edit#gid=1089791340", 
-                         range = "2023WORKSHEET")
 
-# Quick map to see if points are roughly in place
-library(leaflet)
-leaflet() %>% 
-  addCircles(geocoded_m$pleiades_Longitude, 
-             geocoded_m$pleiades_Latitude)
+# View Province of findspot
 
-# Tally by certainty to see how many were easily geocoded 
-names(geocoded_m)
-geocoded_m %>% 
-  group_by(Certainty) %>% 
-  tally()
+origo %>%
+
+  group_by(start_long,start_lat, province_label_clean) %>%
+
+  summarize(number = n()) %>%
+
+  arrange(desc(number))
+
+ 
+
 ```
-Ok, so we have nearly 2000 geocoded with certainty and additional 500 uncertain ones. The remaining 500 might need to be reviewed and the 2000 certain ones could also use a spotcheck as the digitisation is done by a volunteer. 
+
+ 
+
+Province of origin
+Pleiades roman empire is too complicated beause it collates all periods and changing province names. I need a simpler adminitrative overview.
+
 ```{r}
-# Spatialize into an sf object grabbing only valid Lat/Longs
 
-origo4326 <- geocoded_m %>% 
-  filter(!is.na(pleiades_Longitude)) %>% 
-  filter(Certainty!="wild guess")
-  st_as_sf(coords = c("pleiades_Longitude", "pleiades_Latitude"), crs = 4326)
+# Check out the provinces
 
-  
-# Plot the results in mapview so as to see the distribution of certainties in space   
-  
-library(mapview)  
-mapview(origo4326, zcol = "Certainty")
+romanEmpire %>%
+
+  st_drop_geometry() %>%
+
+    group_by(name) %>%
+
+    tally() %>%
+
+  arrange(desc(n))
+
+# Check spatial extent
+
+ mapview(romanEmpire)
 
 ```
 
+### Spatial join with the Roman Empire
 
+ 
+
+Alas the Pleiades provinces overlap with different temporal versions of themselves. I need only one dataset, ideally the largest AD117 version
+
+If you need better provinces, download them from DAWE with bash after installing wget tool with https://builtvisible.com/download-your-website-with-wget/
+
+ 
+
+```{bash,eval = FALSE}
+
+# wget --no-parent -r http://awmc.unc.edu/awmc/map_data/shapefiles/political_shading
+
+```
+
+## Get Trajanic borders and provinces for the Roman Empire 
+
+```{r}
+provinces117 <- st_read("../data/large_data/awmc.unc.edu/awmc/map_data/shapefiles/political_shading/roman_empire_ad_117.shp") 
+
+# One of the polygons is self-crossing, announcing a duplicate vertex. Here I fix the geometry 
+
+provinces117$geometry <- provinces117$geometry %>% st_make_valid() 
+mapview(provinces117)
+```
+
+ 
+## Figuring out birth and death provinces
+
+```{r}
+
+# Findspot - Death place
+
+origo %>%
+
+  group_by(province_label_clean) %>%
+
+  summarize(number = n()) %>%
+
+  arrange(desc(number))
+
+ 
+# Intersection of origo with provinces should get me orig - Birth province
+ 
+
+#origo$province_origo <-
+
+origo_province <- origo %>%
+
+  st_as_sf(coords = c("start_long", "start_lat"), crs= 4326) %>%
+
+    # st_within(provinces117)
+
+    # st_within(romanEmpire)
+
+  st_intersection(provinces117) %>%
+
+  st_drop_geometry()
+
+# birthplace province in hiding in the OBJECTID
+orig_dest_provinces <- origo_province %>% 
+  select(OBJECTID, province_label_clean, origo_frequency, end_lat, end_long) %>% rename(source = OBJECTID, target = province_label_clean, value = origo_frequency)
+
+# ensure that source and target are integers
+unique(orig_dest_provinces$source)
+provinces117
+unique(orig_dest_provinces$target)
+
+orig_dest_provinces$target_int <- as.factor(orig_dest_provinces$target)
+oiginal_levels <- levels(orig_dest_provinces$target_int)
+levels(orig_dest_provinces$target_int) <- 1:45
+
+unique(orig_dest_provinces$target_int)
+
+
+# Create nodes of all the 45 unique death province names
+nodes <- as.data.frame(x = oiginal_levels)
+nodes$value <- 1:45
+names(nodes)[1] <- "name"
+
+# Birth province names
+unique(orig_dest_provinces$source)  # there are 1-120
+
+unique(romanEmpire$name)  # in Pleiades also 120
+b_province <- as.data.frame(x = unique(romanEmpire$name))   
+b_province$value <- 1:120 
+names(b_province)[1] <- "name"
+
+b_province$name%in% nodes$name
+
+
+
+```
+
+## Sankey diagram WAITING UNTIL CODES COME THROUGH FOR BIRTH PROVINCES
+
+
+
+https://stackoverflow.com/questions/31707941/how-do-i-change-the-default-library-path-for-r-packages
+
+```{r}
+# install.packages("remotes")
+
+.libPaths()
+
+remotes::install_github("davidsjoberg/ggsankey")
+
+library(ggsankey)
+
+# prepare the data
+df <- orig_dest_provinces %>% 
+  select(source, target, target_int,value) %>% 
+  left_join(b_province, by = c("source" = "value")) %>% 
+  rename(source_int = source, source = name) %>% 
+  relocate(source, .before = source_int)
+
+b_province <- b_province %>% 
+  rename(id = value) %>% 
+  relocate(name, .after = id)
+which(!complete.cases(df))
+
+ggplot(df[,1:4], aes(x = source, 
+               next_x = target, 
+               node = source_int, 
+               next_node = target_int, 
+               fill = factor(source_int))) +
+  geom_sankey()
+```
+
+
+First attempts - data needs to be unique per each province!! and hold the quantity!!
+```{r}
+# Load package
+install.packages("networkD3")
+library(networkD3)
+
+
+# EXAMPLE: Load energy projection data
+URL <- paste0(
+        "https://cdn.rawgit.com/christophergandrud/networkD3/",
+        "master/JSONdata/energy.json")
+Energy <- jsonlite::fromJSON(URL)
+sankeyNetwork(Links = Energy$links, Nodes = Energy$nodes, Source = "source",
+             Target = "target", Value = "value", NodeID = "name",
+             units = "TWh", fontSize = 12, nodeWidth = 30)
+
+
+# Plot
+sankeyNetwork(Links = df[, c("source_int", "target_int", "value")],
+              Nodes = b_province, Source = "source_int",
+             Target = "target_int", Value = "value", 
+             NodeID = "name",
+             fontSize = 12, 
+             nodeWidth = 30)
+
+```
 
