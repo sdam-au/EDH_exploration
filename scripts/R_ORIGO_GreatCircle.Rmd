@@ -30,7 +30,6 @@ library(sfarrow)
 
 ```{r}
 # Pleiades provinces
-
 romanEmpire <- read_sf("../data/pleiades_regions.geojson")
 
 
@@ -43,6 +42,8 @@ mapview(provinceEDH, zcol = "valid")
 # LIRE
 LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
 
+# Origo parquet
+O <- st_read_parquet("../data/origo_geo.parquet")
 ```
  
 ## Grab manually geocoded origo from SDAM google (mostly finished 14 March)
@@ -235,6 +236,18 @@ origo %>%
   mapview(zcol="Certainty") + mapview(orig_dest_lines)
 
 ```
+## Distances
+```{r}
+# Euclidian
+hist(unclass(st_length(st_transform(orig_dest_lines,3035))/1000), main = "Travel distance Euclidian",
+     xlab = "Distance (km)")
+summary(unclass(st_length(st_transform(orig_dest_lines,3035))/1000))
+
+# GC
+hist(unclass(st_length(orig_dest_lines))/1000, main = "Travel distance ",
+     xlab = "Distance (km)")
+summary(unclass(st_length(orig_dest_lines))/1000)
+```
 
  
 ## Provinces
@@ -381,7 +394,6 @@ st_write(paths %>% select(id:pleiades_title,end_lat:normalized_distance), "../da
 paths
 
 paths <- readRDS("../data/BDpaths.rds")
-
 ```
 
  

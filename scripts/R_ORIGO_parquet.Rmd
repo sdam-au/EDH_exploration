@@ -1,0 +1,79 @@
+---
+title: "Origo Parquett"
+author: "Adela Sobotkova"
+date: "2023-03-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(tidyverse)
+
+library(sf)
+
+library(sfarrow)
+library(mapview)
+```
+
+# Get province, origo and LIRE data
+
+```{r}
+# Pleiades provinces
+romanEmpire <- read_sf("../data/pleiades_regions.geojson")
+
+
+# EDH provinces
+provinceEDH <- read_sf("../data/roman_province_boundaries.json")
+ 
+provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
+mapview(provinceEDH, zcol = "valid")
+
+# LIRE
+LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
+
+# Origo parquet
+origo <- st_read_parquet("../data/origo_geo.parquet")
+
+paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet")
+```
+
+# Explore origo
+```{r}
+# Total amount of people with origo
+dim(origo) # 2277 records
+
+
+# Unique inscriptions (should be lower than 2277 as some have multiple people on an inscription)
+origo %>% 
+  group_by(hd_nr) %>% 
+  tally()
+# 1951
+
+# Unique birth locations by coordinates
+origo %>% 
+  group_by(pleiades_Latitude, pleiades_Longitude) %>% 
+  tally()
+# 663
+
+
+# Unique birth locations by origo placename
+origo %>% 
+  group_by(origo_clean) %>% 
+  tally()
+# 1083
+
+# Unique pleiades title on origo
+origo %>% 
+  group_by(pleiades_title) %>% 
+  tally()
+# 681
+
+
+# Unique death locations THIS IS HIGH
+nrow(origo) - length(which(duplicated(origo$edh_point)))
+# only 484 unique destinations for all the travellers
+
+```
+
