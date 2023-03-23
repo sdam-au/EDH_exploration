@@ -26,13 +26,21 @@ library(sfarrow)
 
  
  
-# Get data
+# Get province and LIRE data
 
 ```{r}
 # Pleiades provinces
 
 romanEmpire <- read_sf("../data/pleiades_regions.geojson")
 
+
+# EDH provinces
+provinceEDH <- read_sf("../data/roman_province_boundaries.json")
+ 
+provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
+mapview(provinceEDH, zcol = "valid")
+
+# LIRE
 LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
 
 ```
@@ -161,7 +169,7 @@ which(is.na(origo$start_long))
 
  
 # Calculate frequency of origins
-origo %>%
+origo_frequency <- origo %>%
   group_by(origo_clean) %>%
   tally() %>% 
   arrange(desc(n))  # there are 985 unique places
@@ -175,7 +183,7 @@ origo_unique <-origo %>%
 
 # Add this frequency to the origo
 origo$origo_frequency <- origo %>% 
-  left_join(orig_frequency, by = "origo_clean") %>% 
+  left_join(origo_frequency, by = "origo_clean") %>% 
   pull(n)
 
 unique(origo$origo_frequency)
@@ -229,15 +237,27 @@ origo %>%
 ```
 
  
+## Provinces
 
+### Pleiades
 To plot these linestrings over Roman provinces, use Pleiades regions data
 
-```{r regions}
-leaflet() %>% 
-  addTiles() %>% 
-  addPolygons(data=romanEmpire) %>% 
-  addPolylines(data = orig_dest_lines, opacity = 0.1, color = "grey") %>% 
-  addCircles(lng = origo$start_long, lat = origo$start_lat, radius=log(origo$origo_frequency), color = "red", group = "events")
+```{r pleiades-regions}
+leaflet() %>%
+  # Base groups
+  addTiles(group = "OSM") %>% 
+  addProviderTiles("Stamen.Watercolor", group = "Stamen") %>% 
+  # Overlay groups
+  addPolygons(data=romanEmpire, group = "Pleiades provinces") %>% 
+  addPolygons(data = provinceEDH, col = "pink", group = "EDH provinces") %>% 
+ # addPolylines(data = orig_dest_lines, opacity = 0.1, color = "grey") %>% 
+  addCircles(lng = origo$start_long, lat = origo$start_lat, radius=log(origo$origo_frequency), color = "red", group = "events") %>% 
+# Layers control
+  addLayersControl(
+    baseGroups = c("Stamen","OSM"),
+    overlayGroups = c("Pleiades provinces","EDH provinces", "events"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
 
 ```
 
@@ -509,12 +529,15 @@ ggplot(arcs) +
 Province of findspot
 
 ```{r}
+# View EDH 66 provinces 
 
-# View Province of findspot
+unique(provinceEDH$province)
+
+# View Province of findspot in LIST we have 46 provinces
 
 origo %>%
 
-  group_by(start_long,start_lat, province_label_clean) %>%
+  group_by(province_label_clean) %>%
 
   summarize(number = n()) %>%
 
@@ -526,12 +549,24 @@ origo %>%
 
  
 
-Province of origin
-Pleiades roman empire is too complicated beause it collates all periods and changing province names. I need a simpler adminitrative overview.
+### Province of Birth and Death
 
-```{r}
+While the EDH data contain findspot province, for consistency's sake it is best to regenerate the province mapping anew so it is consistent (name and space-wise).
 
-# Check out the provinces
+
+There are three options for provinces of RE
+
+* Pleiades: Alas the Pleiades provinces collates province boundaries and names from different periods without providing dates for these new spatial entiries. If you need only one dataset, move along
+
+* AWMC has a list of province boundaries from different years. Download them from AWMC dataset with bash after installing wget tool with https://builtvisible.com/download-your-website-with-wget/
+
+* EDH offers its own list of 60x provinces
+
+Pleiades Roman Empire regions is too complicated because it collates all periods and changing province names. I need a simpler administrative overview.
+
+```{r pleiades}
+
+# Check out the Pleiades provinces
 
 romanEmpire %>%
 
@@ -549,15 +584,7 @@ romanEmpire %>%
 
 ```
 
-### Spatial join with the Roman Empire
-
- 
-
-Alas the Pleiades provinces overlap with different temporal versions of themselves. I need only one dataset, ideally the largest AD117 version
-
-If you need better provinces, download them from DAWE with bash after installing wget tool with https://builtvisible.com/download-your-website-with-wget/
-
- 
+### AWMC data
 
 ```{bash,eval = FALSE}
 
@@ -565,9 +592,8 @@ If you need better provinces, download them from DAWE with bash after installing
 
 ```
 
+```{r awmc}
 ## Get Trajanic borders and provinces for the Roman Empire 
-
-```{r}
 provinces117 <- st_read("../data/large_data/awmc.unc.edu/awmc/map_data/shapefiles/political_shading/roman_empire_ad_117.shp") 
 
 # One of the polygons is self-crossing, announcing a duplicate vertex. Here I fix the geometry 
@@ -577,9 +603,12 @@ mapview(provinces117)
 ```
 
  
-## Figuring out birth and death provinces
 
-```{r}
+## Spatial join between provinces and findspot/origo
+
+## Look at death provinces
+
+```{r death-spot}
 
 # Findspot - Death place
 
@@ -591,7 +620,12 @@ origo %>%
 
   arrange(desc(number))
 
+```
  
+## Look at birth provinces
+
+```{r}
+
 # Intersection of origo with provinces should get me orig - Birth province
  
 
@@ -605,7 +639,7 @@ origo_province <- origo %>%
 
     # st_within(romanEmpire)
 
-  st_intersection(provinces117) %>%
+  st_join(provinceEDH) %>%
 
   st_drop_geometry()
 
