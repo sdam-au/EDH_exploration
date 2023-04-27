@@ -1,13 +1,8 @@
 ---
-
 title: "Origo_GClinestrings"
-
 author: "Adela Sobotkova"
-
 date: "2023-02-09"
-
 output: html_document
-
 ---
 
 This script contains an elaboration of birth and death data for origo and findspots of inscriptions and needs cleaning up
@@ -21,17 +16,15 @@ library(tidyverse)
 library(sf)
 
 library(sfarrow)
+library(mapview)
 
 ```
 
- 
- 
 # Get province and LIRE data
 
 ```{r}
 # Pleiades provinces
-romanEmpire <- read_sf("../data/pleiades_regions.geojson")
-
+provincePle <- read_sf("../data/pleiades_regions.geojson")
 
 # EDH provinces
 provinceEDH <- read_sf("../data/roman_province_boundaries.json")
@@ -43,14 +36,17 @@ mapview(provinceEDH, zcol = "valid")
 LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
 
 # Origo parquet
-O <- st_read_parquet("../data/origo_geo.parquet")
+origo <- st_read_parquet("../data/origo_geo.parquet")
+origo_pr <- st_read_parquet("../data/origo_geo_provinces.parquet")
 ```
  
 ## Grab manually geocoded origo from SDAM google (mostly finished 14 March)
  
 Load the manually geocoded origo information, check certainty, convert into a spatial object and display in mapview so that you see the distribution of the certain vs wild-guess allocations!
 
-```{r}
+```{r eval = FALSE}
+
+## THis chunk is superceded by origo parquet, but is good just for reproducibility
 
 # Load data from google
 
@@ -58,9 +54,7 @@ library(googlesheets4)
 
 gs4_deauth() # deauthorize or face authentication token errors
 
-geocoded_m <- read_sheet("https://docs.google.com/spreadsheets/d/17ibTaRJHHevY2wVsx9aK-NEd54fGho69l5dGJNE3XBA/edit#gid=1089791340",
-
-                         range = "2023WORKSHEET")
+geocoded_m <- read_sheet("https://docs.google.com/spreadsheets/d/17ibTaRJHHevY2wVsx9aK-NEd54fGho69l5dGJNE3XBA/edit#gid=1089791340", range = "2023WORKSHEET")
 
  
 
@@ -76,7 +70,7 @@ leaflet() %>%
 
              geocoded_m$pleiades_Latitude) %>%
 
-  addPolygons(data = romanEmpire)
+  addPolygons(data = provincePle)
 
  
 
@@ -92,15 +86,47 @@ geocoded_m %>%
 
 ```
 
+
+```{r parquet-viz}
+
+# Quick map to see if points are roughly in place
+
+library(leaflet)
+
+leaflet() %>%
+
+  addTiles() %>%
+
+  addCircles(origo$pleiades_Longitude,
+
+             origo$pleiades_Latitude) %>%
+
+  addPolygons(data = provinceEDH, opacity = 0.2, color = "green")
+
+ 
+
+# Tally by certainty to see how many were easily geocoded
+
+names(origo)
+
+origo %>%
+
+  group_by(Certainty) %>%
+
+  tally()
+```
+
 Ok, so we have nearly 2000 geocoded birth places with certainty and additional 500 uncertain ones. The remaining 500 might need to be reviewed and the 2000 certain ones could also use a spotcheck as the digitisation is done by a volunteer.
 
-```{r}
+```{r origo-mapview-certainty}
 
 # Spatialize into an sf object grabbing only valid Lat/Longs
 
 names(geocoded_m)
+names(origo)
 
-origo4326 <- geocoded_m[,c(1:11,17)] %>%
+origo4326 <- origo %>% 
+  #geocoded_m[,c(1:11,17)] %>%
 
   filter(!is.na(pleiades_Longitude)) %>%
 
@@ -126,7 +152,14 @@ mapview(origo4326, zcol = "Certainty")
 
 ```
 
- 
+## Tmaps
+
+```{r}
+
+```
+
+
+###########3OLD STUFF BELOW 
 
 ## Get origo data
 
@@ -261,7 +294,7 @@ leaflet() %>%
   addTiles(group = "OSM") %>% 
   addProviderTiles("Stamen.Watercolor", group = "Stamen") %>% 
   # Overlay groups
-  addPolygons(data=romanEmpire, group = "Pleiades provinces") %>% 
+  addPolygons(data=provincePle, group = "Pleiades provinces") %>% 
   addPolygons(data = provinceEDH, col = "pink", group = "EDH provinces") %>% 
  # addPolylines(data = orig_dest_lines, opacity = 0.1, color = "grey") %>% 
   addCircles(lng = origo$start_long, lat = origo$start_lat, radius=log(origo$origo_frequency), color = "red", group = "events") %>% 
@@ -405,7 +438,7 @@ paths <- readRDS("../data/BDpaths.rds")
 
 BDnetwork <- ggplot() +
 
-   geom_sf(data = romanEmpire, size = .2, fill = "grey", col = "grey") +
+   geom_sf(data = provincePle, size = .2, fill = "grey", col = "grey") +
 
    geom_point(data = origo %>%
 
@@ -487,7 +520,7 @@ ggplot(orig_dest_lines)+
 
   geom_sf()+
 
-  geom_sf(data=romanEmpire, alpha = 0.3)
+  geom_sf(data=provincePle, alpha = 0.3)
 
 ```
 
@@ -580,7 +613,7 @@ Pleiades Roman Empire regions is too complicated because it collates all periods
 
 # Check out the Pleiades provinces
 
-romanEmpire %>%
+provincePle %>%
 
   st_drop_geometry() %>%
 
@@ -592,7 +625,7 @@ romanEmpire %>%
 
 # Check spatial extent
 
- mapview(romanEmpire)
+ mapview(provincePle)
 
 ```
 
@@ -649,7 +682,7 @@ origo_province <- origo %>%
 
     # st_within(provinces117)
 
-    # st_within(romanEmpire)
+    # st_within(provincePle)
 
   st_join(provinceEDH) %>%
 
@@ -679,8 +712,8 @@ names(nodes)[1] <- "name"
 # Birth province names
 unique(orig_dest_provinces$source)  # there are 1-120
 
-unique(romanEmpire$name)  # in Pleiades also 120
-b_province <- as.data.frame(x = unique(romanEmpire$name))   
+unique(provincePle$name)  # in Pleiades also 120
+b_province <- as.data.frame(x = unique(provincePle$name))   
 b_province$value <- 1:120 
 names(b_province)[1] <- "name"
 

@@ -18,13 +18,13 @@ library(mapview)
 ```
 
 # Get province, origo and LIRE data
-
+*What are all these datasets? Explanation is needed!*
 ```{r}
 # Pleiades provinces
 romanEmpire <- read_sf("../data/pleiades_regions.geojson")
 
 
-# EDH provinces
+# EDH provinces - the best compromise for non-overlapping provincial boundaries
 provinceEDH <- read_sf("../data/roman_province_boundaries.json")
  
 provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
@@ -39,7 +39,11 @@ origo <- st_read_parquet("../data/origo_geo.parquet")
 paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet")
 ```
 
-# Explore origo
+# Birth locations geocoded in *origo* column
+
+Birth locations were geocoded on the basis of 'placename' in the EDH dataset. This field is unstructured text and suffers from ambiquity, incompleteness, spelling inconsistency and varied levels of granularity. It was first automatically (30% worked) and later manually geocoded (90% of the remaining 70%).
+
+This chunk investigates the frequency and uniqueness of placenames in the origo column as well as their spatial and nomical overlap. While we have 2277 people with geocodable origo, they are named on 1951 inscriptions, mention 1083 placenames, which we have traced (with more or less certainty) to 663 unique physical locations. WHen geocoding, ca 76% of locations are geocoded with certainty, 12% have multiple good variants, 7% are uncertain and 5% represent a wild guess. 
 ```{r}
 # Total amount of people with origo
 dim(origo) # 2277 records
@@ -70,10 +74,251 @@ origo %>%
   tally()
 # 681
 
-
-# Unique death locations THIS IS HIGH
-nrow(origo) - length(which(duplicated(origo$edh_point)))
-# only 484 unique destinations for all the travellers
+# Certainty of origo geocoding
+origo %>% 
+  group_by(Certainty) %>% 
+  tally() %>% 
+  mutate(pctCertain = round(n/2277 *100, 2))
+  
+origo <- origo %>% 
+  mutate(certainty = case_when(
+   Certainty == "certain" ~ "certain",
+   Certainty == "uncertain (name could be interpreted differently)" ~ "uncertain",
+   Certainty == "uncertain (another good variant exists)" ~ "uncertain",
+   Certainty == "uncertainty is in the latlong source"  ~ "uncertain",
+   Certainty == "wild guess" ~ "wild guess"))
 
 ```
+
+## Death locations
+
+```{r}
+# Unique death locations THIS IS HIGH
+nrow(origo) - length(which(duplicated(origo$edh_point)))
+
+# only 484 unique destinations for all the travellers
+```
+
+## Spatial Data Streamlining
+
+### Create simple feature using origo_point coordinates in origo
+```{r}
+names(origo) # edh point is the active geoemtry
+origo_edh <- origo %>% 
+  st_set_crs(4326)
+origo_point <- origo %>%  # switching active geometry to origo_point
+  st_drop_geometry() %>% 
+  st_as_sf(coords = c("pleiades_Longitude","pleiades_Latitude"), crs = 4326)
+
+```
+
+### Check projection and validity
+```{r}
+# edh province polygons need clean up - NOT FINISHED
+st_crs(provinceEDH) == st_crs(origo_edh)
+st_is_valid(provinceEDH)
+
+# this only fixes 2 out of 8 bad geometries
+provinceEDH %>% 
+  st_make_valid() %>% 
+  st_buffer(0) %>% 
+  st_is_valid()
+
+```
+
+### GPT suggests (Try it with 3035)
+```{r}
+# Check for invalid geometries
+invalid <- st_is_valid(provinceEDH)
+
+# Fix invalid geometries using st_buffer()
+provinceEDH[!invalid,] <- st_buffer(provinceEDH[!invalid,], 0) %>% 
+  st_buffer(-0.0001)
+
+# Check again for invalid geometries
+st_is_valid(provinceEDH)
+```
+### Fungujici provincie USE THIS ONE!
+```{r}
+provinceEDH <- read_sf("../data/provinces_valid.geojson")
+st_is_valid(provinceEDH)
+
+
+```
+
+
+### Province and origo overlap CANNOT DO THIS
+```{r}
+province_centroid <- st_centroid(provinceEDH)
+origo_province <- origo_point %>% 
+   st_within(provinceEDH) # but these change for different periods
+```
+
+### Make visuals
+
+```{r parquet-viz}
+
+# Quick map to see if points are roughly in place
+
+library(leaflet)
+
+leaflet() %>%
+
+  addTiles() %>%
+
+  addCircles(origo$pleiades_Longitude,
+
+             origo$pleiades_Latitude) %>%
+
+  addPolygons(data = provinceEDH, opacity = 0.2, color = "green")
+
+ 
+
+# Tally by certainty to see how many were easily geocoded
+
+origo_point %>%
+  group_by(certainty) %>%
+  tally() %>% 
+  mutate(pctCertain = round(n/2277 *100,1))
+   
+```
+
+
+
+### Prepare for time-series
+```{r}
+# See the ~X1BCE fields in the dataset which indicate presence/absense in a given century
+names(origo)
+
+unique(origo$certainty)
+
+# Wrangle into a long dataset
+
+origo_edh_long <- origo_edh %>%  
+  select(-origo_line) %>% 
+  pivot_longer(cols = X1BCE:X5CE,  # take values from columns and write through True/False
+               names_to = "century")
+
+
+# Repeat for origo _point geometry
+
+origo_pt_long <- origo_point %>%  
+  select(-origo_line) %>% 
+  pivot_longer(cols = X1BCE:X5CE, 
+               names_to = "century")
+
+
+```
+
+
+```{r origo-mapview-certainty}
+
+# Plot the results in mapview so as to see the distribution of certainties in space  
+
+
+library(mapview) 
+
+mapview(origo_point, zcol = "certainty")
+```
+
+
+## Time-series on origin / birth place
+
+```{r}
+
+# Use it as a facet in tmaps
+library(tmap)
+tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
+tmap_options(check.and.fix = TRUE)
+tmap_mode(mode = "view" )
+
+tm_shape(origo_pt_long) +
+  tm_facets(by = "century",
+         
+            ncol=2, nrow = 3)+
+  tm_dots("certainty",
+             palette = "magma")+
+  tm_shape(provinceEDH)+
+  tm_borders(col = "grey",
+             alpha = 0.7)+
+  tm_layout(main.title = "People's origin",
+            legend.outside = TRUE)
+
+```
+
+
+## Time-series on destination / death place
+
+NEEDS DIFFERENT DATE? (=50 years!?)
+
+```{r}
+
+# Use it as a facet in tmaps
+library(tmap)
+tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
+tmap_options(check.and.fix = TRUE)
+tmap_mode(mode = "view" )
+
+tm_shape(origo_edh_long) +
+  tm_facets(by = "century",
+         
+            ncol=2, nrow = 3)+
+  tm_dots("certainty",
+             palette = "magma")+
+  tm_shape(provinceEDH)+
+  tm_borders(col = "grey",
+             alpha = 0.7)+
+  tm_layout(main.title = "People's origin",
+            legend.outside = TRUE)
+```
+## Sync maps
+
+```{r}
+library(mapview)
+library(leafsync)
+
+map_origo <- tm_shape(origo_point) +
+  tm_dots("certainty",
+             palette = "magma")+
+  tm_shape(provinceEDH)+
+  tm_borders(col = "grey",
+             alpha = 0.7)+
+  tm_layout(main.title = "Origins")
+
+map_dest <- tm_shape(origo_edh) +
+  tm_dots("certainty",
+             palette = "magma")+
+  tm_shape(provinceEDH)+
+  tm_borders(col = "grey",
+             alpha = 0.7)+
+  tm_layout(main.title = "Destinations")
+
+map_origo <- mapview(origo_point) +mapview(pr )
+layer.name = "Baths in OSM",
+        homebutton = FALSE, lwd = 0.5
+sync(map_origo, map_dest)
+```
+
+## GGplot density map 
+
+Needs - to be cleaned up to white background and contours and provinces in the back
+
+```{r}
+ggplot() +
+  stat_density_2d(data = origo_long,
+                  mapping = aes(x = purrr::map_dbl(origo_point, ~.[1]),
+                                y = purrr::map_dbl(origo_point, ~.[2]),
+                                fill = stat(density)),
+                  geom = "tile",
+                  contour = F,
+                  alpha = 0.5)+
+  facet_wrap(~ century, ncol = 2)
+ggplot()+
+ # geom_sf(data = provinceEDH, fill = NA)+
+  geom_sf(data = origo_long, aes(color = cert)) +
+  #scale_fill_viridis_c(option = "magma") +
+  theme_bw()
+
+```
+
 
