@@ -119,15 +119,14 @@ st_crs(provinceEDH) == st_crs(origo_edh)
 st_is_valid(provinceEDH)
 
 # this only fixes 2 out of 8 bad geometries
-provinceEDH %>% 
-  st_make_valid() %>% 
-  st_buffer(0) %>% 
-  st_is_valid()
+# provinceEDH %>% 
+#   st_make_valid() %>% 
+#   st_buffer(0) 
 
 ```
 
 ### GPT suggests (Try it with 3035)
-```{r}
+```{r eval = FALSE}
 # Check for invalid geometries
 invalid <- st_is_valid(provinceEDH)
 
@@ -150,8 +149,7 @@ st_is_valid(provinceEDH)
 ### Province and origo overlap CANNOT DO THIS
 ```{r}
 province_centroid <- st_centroid(provinceEDH)
-origo_province <- origo_point %>% 
-   st_within(provinceEDH) # but these change for different periods
+
 ```
 
 ### Make visuals
@@ -197,7 +195,9 @@ unique(origo$certainty)
 origo_edh_long <- origo_edh %>%  
   select(-origo_line) %>% 
   pivot_longer(cols = X1BCE:X5CE,  # take values from columns and write through True/False
-               names_to = "century")
+               names_to = "century",
+               values_to = "century_logical") %>% 
+  filter(century_logical == TRUE)
 
 
 # Repeat for origo _point geometry
@@ -205,9 +205,11 @@ origo_edh_long <- origo_edh %>%
 origo_pt_long <- origo_point %>%  
   select(-origo_line) %>% 
   pivot_longer(cols = X1BCE:X5CE, 
-               names_to = "century")
+               names_to = "century",
+               values_to = "century_logical") %>% 
+  filter(century_logical == TRUE)
 
-
+origo_pt_long$century_logical
 ```
 
 
@@ -234,15 +236,14 @@ tmap_mode(mode = "view" )
 
 tm_shape(origo_pt_long) +
   tm_facets(by = "century",
-         
-            ncol=2, nrow = 3)+
+                ncol=2, nrow = 3)+
   tm_dots("certainty",
-             palette = "magma")+
+            palette = "magma")+
   tm_shape(provinceEDH)+
   tm_borders(col = "grey",
              alpha = 0.7)+
-  tm_layout(main.title = "People's origin",
-            legend.outside = TRUE)
+  tm_layout(main.title = "Birthplaces of moving people by century",
+            legend.outside = F)
 
 ```
 
@@ -268,7 +269,7 @@ tm_shape(origo_edh_long) +
   tm_shape(provinceEDH)+
   tm_borders(col = "grey",
              alpha = 0.7)+
-  tm_layout(main.title = "People's origin",
+  tm_layout(main.title = "Final destination of movement",
             legend.outside = TRUE)
 ```
 ## Sync maps
