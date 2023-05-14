@@ -5,6 +5,10 @@ date: "2023-03-23"
 output: html_document
 ---
 
+Visualizing origo dataset:
+This script containes facetted maps of origin and destination of the people in EDH inscriptions (92,000 > 3000 placenames> 2277 successfully geocoded ones).
+It needs a breakdown by province (DONE) with Sankey diagram mapping from to to by province, to explore flow by time.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -17,18 +21,20 @@ library(sfarrow)
 library(mapview)
 ```
 
-# Get province, origo and LIRE data
+## Get province, origo and LIRE data
+
 *What are all these datasets? Explanation is needed!*
-```{r}
+```{r data}
 # Pleiades provinces
-romanEmpire <- read_sf("../data/pleiades_regions.geojson")
+romanEmpire <- read_sf("../data/pleiades_regions.geojson") # not great as they collate all province changes over time without identities
 
 
 # EDH provinces - the best compromise for non-overlapping provincial boundaries
-provinceEDH <- read_sf("../data/roman_province_boundaries.json")
- 
-provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
-mapview(provinceEDH, zcol = "valid")
+provinceEDH <- read_sf("../data/provinces_valid.geojson")
+st_is_valid(provinceEDH) 
+
+# provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
+# mapview(provinceEDH, zcol = "valid")
 
 # LIRE
 LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
@@ -39,7 +45,7 @@ origo <- st_read_parquet("../data/origo_geo.parquet")
 paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet")
 ```
 
-# Birth locations geocoded in *origo* column
+## Birth locations geocoded in the *origo* column
 
 Birth locations were geocoded on the basis of 'placename' in the EDH dataset. This field is unstructured text and suffers from ambiquity, incompleteness, spelling inconsistency and varied levels of granularity. It was first automatically (30% worked) and later manually geocoded (90% of the remaining 70%).
 
@@ -101,21 +107,25 @@ nrow(origo) - length(which(duplicated(origo$edh_point)))
 
 ## Spatial Data Streamlining
 
-### Create simple feature using origo_point coordinates in origo
+### Create simple feature using origo_start coordinates in origo
 ```{r}
 names(origo) # edh point is the active geoemtry
-origo_edh <- origo %>% 
-  st_set_crs(4326)
-origo_point <- origo %>%  # switching active geometry to origo_point
+origo_end <- origo %>% 
+  st_set_crs(4326) %>% 
+  st_transform(3035)
+origo_start <- origo %>%  # switching active geometry to origo_start
   st_drop_geometry() %>% 
-  st_as_sf(coords = c("pleiades_Longitude","pleiades_Latitude"), crs = 4326)
+  st_as_sf(coords = c("pleiades_Longitude","pleiades_Latitude"), crs = 4326) %>% 
+  st_transform(3035)
 
 ```
 
 ### Check projection and validity
 ```{r}
 # edh province polygons need clean up - NOT FINISHED
-st_crs(provinceEDH) == st_crs(origo_edh)
+st_crs(provinceEDH) == st_crs(origo_start)
+st_crs(provinceEDH) == st_crs(origo_end)
+
 st_is_valid(provinceEDH)
 
 # this only fixes 2 out of 8 bad geometries
@@ -137,15 +147,6 @@ provinceEDH[!invalid,] <- st_buffer(provinceEDH[!invalid,], 0) %>%
 # Check again for invalid geometries
 st_is_valid(provinceEDH)
 ```
-### Fungujici provincie USE THIS ONE!
-```{r}
-provinceEDH <- read_sf("../data/provinces_valid.geojson")
-st_is_valid(provinceEDH)
-
-
-```
-
-
 ### Province and origo overlap CANNOT DO THIS
 ```{r}
 province_centroid <- st_centroid(provinceEDH)
@@ -168,22 +169,19 @@ leaflet() %>%
 
              origo$pleiades_Latitude) %>%
 
-  addPolygons(data = provinceEDH, opacity = 0.2, color = "green")
-
- 
-
+  addPolygons(data = st_transform(provinceEDH, 4326), opacity = 0.2, color = "green")
+```
+```{r}
 # Tally by certainty to see how many were easily geocoded
 
-origo_point %>%
+origo_start %>%
   group_by(certainty) %>%
   tally() %>% 
-  mutate(pctCertain = round(n/2277 *100,1))
-   
+  mutate(pctGeocodingCertainty = round(n/2277 *100,1))
 ```
 
-
-
 ### Prepare for time-series
+Iin order to create a facetted view of change over time, we need the century values (present/absent) to be in a single column, and not spread over several columns. Therefore we shall pivot the dataset from wide to longer and compress the individual century columns with T/F values into a single 'century' column with a row for every century the inscription was in existence.
 ```{r}
 # See the ~X1BCE fields in the dataset which indicate presence/absense in a given century
 names(origo)
@@ -192,7 +190,7 @@ unique(origo$certainty)
 
 # Wrangle into a long dataset
 
-origo_edh_long <- origo_edh %>%  
+origo_end_long <- origo_end %>%  
   select(-origo_line) %>% 
   pivot_longer(cols = X1BCE:X5CE,  # take values from columns and write through True/False
                names_to = "century",
@@ -202,14 +200,13 @@ origo_edh_long <- origo_edh %>%
 
 # Repeat for origo _point geometry
 
-origo_pt_long <- origo_point %>%  
+origo_start_long <- origo_start %>%  
   select(-origo_line) %>% 
   pivot_longer(cols = X1BCE:X5CE, 
                names_to = "century",
                values_to = "century_logical") %>% 
   filter(century_logical == TRUE)
 
-origo_pt_long$century_logical
 ```
 
 
@@ -220,7 +217,7 @@ origo_pt_long$century_logical
 
 library(mapview) 
 
-mapview(origo_point, zcol = "certainty")
+mapview(origo_start, zcol = "certainty")
 ```
 
 
@@ -234,7 +231,7 @@ tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
 tmap_options(check.and.fix = TRUE)
 tmap_mode(mode = "view" )
 
-tm_shape(origo_pt_long) +
+tm_shape(origo_start_long) +
   tm_facets(by = "century",
                 ncol=2, nrow = 3)+
   tm_dots("certainty",
@@ -250,7 +247,6 @@ tm_shape(origo_pt_long) +
 
 ## Time-series on destination / death place
 
-NEEDS DIFFERENT DATE? (=50 years!?)
 
 ```{r}
 
@@ -260,7 +256,7 @@ tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
 tmap_options(check.and.fix = TRUE)
 tmap_mode(mode = "view" )
 
-tm_shape(origo_edh_long) +
+tm_shape(origo_end_long) +
   tm_facets(by = "century",
          
             ncol=2, nrow = 3)+
@@ -272,43 +268,159 @@ tm_shape(origo_edh_long) +
   tm_layout(main.title = "Final destination of movement",
             legend.outside = TRUE)
 ```
+
+
+## Provinces
+Here we attach birth and death province names to the origo record and generate summaries of province flow.
+```{r}
+origo_start_prov <- origo_start %>% 
+  st_join(provinceEDH, join = st_intersects, left = TRUE)
+
+origo_end_prov <- origo_end %>% 
+  st_join(provinceEDH, join = st_intersects, left = TRUE)
+
+province_start_summary <- origo_start_prov %>% 
+  st_drop_geometry() %>% 
+  select(province, pleiades_title) %>% 
+  group_by(province) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  rename(province_birth = n)
+
+province_end_summary <- origo_end_prov %>% 
+  st_drop_geometry() %>% 
+  select(province, pleiades_title) %>% 
+  group_by(province) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  rename(province_death = n)
+
+province_flow_centroid <- province_centroid %>% 
+  left_join(province_end_summary, by = "province") %>% 
+  left_join(province_start_summary, by = "province")
+
+province_centroid
+province_flow_centroid # this may need to be done in a long format for centuries
+```
+
 ## Sync maps
 
 ```{r}
 library(mapview)
 library(leafsync)
 
-map_origo <- tm_shape(origo_point) +
-  tm_dots("certainty",
-             palette = "magma")+
-  tm_shape(provinceEDH)+
-  tm_borders(col = "grey",
-             alpha = 0.7)+
-  tm_layout(main.title = "Origins")
+map_origo <- mapview(province_centroid, 
+          map.types = "OpenStreetMap", 
+        col.regions = "#940000", 
+        color = "white", 
+        cex = "province_birth",
+        legend = TRUE, 
+        layer.name = "Birthplaces",
+        homebutton = FALSE, lwd = 0.5) 
 
-map_dest <- tm_shape(origo_edh) +
-  tm_dots("certainty",
-             palette = "magma")+
-  tm_shape(provinceEDH)+
-  tm_borders(col = "grey",
-             alpha = 0.7)+
-  tm_layout(main.title = "Destinations")
 
-map_origo <- mapview(origo_point) +mapview(pr )
-layer.name = "Baths in OSM",
-        homebutton = FALSE, lwd = 0.5
-sync(map_origo, map_dest)
+map_dest <- mapview(province_centroid, 
+          map.types = "OpenStreetMap", 
+        col.regions = "#940000", 
+        color = "white", 
+        cex = "province_dest",
+        legend = TRUE, 
+        layer.name = "Deathplaces",
+        homebutton = FALSE, lwd = 0.5)
+
+
+sync(map_origo, map_dest) # maps need to be mapview based not tm_shape based
 ```
 
-## GGplot density map 
+## Sankey COPIED BUT NOt working YET - ELABORATE!
+https://stackoverflow.com/questions/63255589/create-a-sankey-diagram-with-tidy-data-in-r
 
+https://r-charts.com/flow/sankey-diagram-ggplot2/
+
+https://www.kaggle.com/code/paulc91/visualise-flows-with-r-d3/report  # the best resource is here
+
+```{r}
+# Sankey network data preparation
+
+top_orig <- origo_start_prov %>%
+  st_drop_geometry() %>% 
+  group_by(province) %>% 
+  tally() %>% 
+  top_n(20, n)
+
+top_dest <- origo_end_prov%>%
+  st_drop_geometry() %>% 
+  group_by(province) %>% 
+  tally() %>% 
+  top_n(20, n)
+
+travellers <- origo_start_prov %>% 
+  st_drop_geometry() %>% 
+  rename(origin=province) %>% 
+  left_join(st_drop_geometry(origo_end_prov)[c(1:2,5,22)], by = "id") %>% 
+  rename(destination = province) %>% 
+  relocate(origin, destination, .before = origo)
+
+# travellers going to the most frequent destinations and from frequent origins
+travellers_filtered <- travellers %>% 
+  filter(origin %in% top_orig$province,
+         destination %in% top_dest$province) %>% 
+  select(id, origin, destination, X1CE:X5CE) %>% 
+  # filter(X2CE == TRUE) %>%
+  # select(-c(X1CE:X5CE)) %>%
+  drop_na() %>%
+  pivot_longer(cols = X1CE:X5CE, names_to = "century", values_to = "value") %>% 
+  count(origin, destination, century, value) %>% 
+  spread(value, n, fill = 0) %>%
+  select(-'FALSE')
+ 
+  # I would like to summarize by number of movements between provinces per century
+
+travellers_filtered
+
+# prepare the data
+df <- travellers_filtered %>%
+  filter(century == "X1CE") %>% 
+  rename(source = origin, target = destination, target_int = 'TRUE') %>% 
+  select(source, target, target_int) %>% 
+  left_join(b_province, by = "source") %>% 
+  relocate(source_int, .after = source) %>% 
+  drop_na() %>% 
+  filter(target_int > 10)
+
+df
+
+b_province <- travellers_filtered %>%
+  group_by(origin) %>% 
+  tally() %>% 
+  rename(source_int = n, source = origin)
+
+```
+
+
+## Sankey plot
+```{r}
+# DOES NOT WORK!   
+library(ggsankey)
+ggplot(df, aes(x = source, 
+               next_x = target, 
+               node = source_int, 
+               next_node = target_int, 
+               fill = factor(source_int))) +
+  geom_sankey()
+
+```
+
+
+## GGplot density map 
+DOES NOT WORK
 Needs - to be cleaned up to white background and contours and provinces in the back
 
 ```{r}
 ggplot() +
-  stat_density_2d(data = origo_long,
-                  mapping = aes(x = purrr::map_dbl(origo_point, ~.[1]),
-                                y = purrr::map_dbl(origo_point, ~.[2]),
+  stat_density_2d(data = origo_start_long,
+                  mapping = aes(x = purrr::map_dbl(origo_start, ~.[1]),
+                                y = purrr::map_dbl(origo_start, ~.[2]),
                                 fill = stat(density)),
                   geom = "tile",
                   contour = F,
