@@ -13,15 +13,15 @@ library(mapview)
 library(leaflet)
 ```
 
-
+This script should be run in sequence to R_EXPLORING PEOPLE where the necessary data> EDH tibble are created and people unnested.
 There is the origo and then lots of findspot data, e.g., findspot_ancient, findspot_modern, their cleaned versions and findspot_certainty, 
 
 ```{r}
-EDH_people <- EDH_unnested
+head(EDH_people) # EDH_people comes from R_EXPLORING_PEOPLE script 
 EDH_people %>% 
   select(matches("cognomen|findspot|origo|province|geo"))
 ```
-There are 15 columns with spatial/geographic information in the people attribute. Except for origo, they originate from the inscription itself, describing its provenance or context of discovery.
+There is origo in the people attribute and additional 14 columns with spatial/geographic information in the enriched EDH attributes. Except for origo, they originate from the inscription itself, describing its provenance or context of discovery.
 
 # Origo in EDH people
 ```{r}
@@ -49,7 +49,7 @@ These 2648 people originate from 1889 distinct places. For these we can pin a po
 
 ## What is the men:women ratio?
 ```{r}
-EDH_unnested %>% 
+EDH_people %>% 
     group_by(gender) %>%
   summarize(cnt = n()) %>% 
   mutate(ratio = round(cnt/sum(cnt)*100, 1))
@@ -61,16 +61,23 @@ EDH_people %>%
   summarize(cnt = n()) %>% 
   mutate(ratio = round(cnt/sum(cnt)*100, 1))
 ```
-Women travel less or declare their origo less, as the normal ratio in EDH is ca 15:65 women to men, while in the corpus with origo it is a whooping 5:85 (with the residuals being NA gender values)
+Declarations of origo are less frequent among women then men. The ratio in EDH is ca 15:65 women to men, while in the corpus with origo the ratio is even more skewed with only 5% of women and 85% of men (with the remaining 10-20% being NA values)
 
 ## What kind of inscription has origo
+To explore other inscription-derived attributes of people iwth origin, we need to use EDH_full - a joined dataset of origo and EDH attributes
 ```{r}
-EDH_people %>%  # was EDH_full
+# number of inscriptions that have origo (whether geocoded or not)
+EDH_people %>% 
+  filter(!is.na(origo)) %>% 
+  group_by(id) %>% 
+  tally()
+
+EDH_full %>%  # use EDH_full
   filter(!is.na(origo)) %>% 
   count(type_of_inscription_clean, sort=T) %>% 
   mutate(ratio = round(n/(sum(n)/100),2))
 
-EDH_people %>%  # was EDH_full
+EDH_full %>%  # was EDH_full
   filter(!is.na(origo)) %>% 
   count(type_of_inscription_clean, sort=T) %>% 
   mutate(ratio = round(n/(sum(n)/100),2)) %>% 
@@ -78,7 +85,7 @@ EDH_people %>%  # was EDH_full
   ggplot(aes(x = "", y = ratio, fill = type_of_inscription_clean)) +
   geom_bar(stat="identity", width=2, color = "white") +
   coord_polar("y", start=0.5)+
-  
+  labs(fill = paste0("Inscription Type (n = 2648)"))+
   theme_void() # remove background, grid, numeric labels
 
 ```
@@ -88,9 +95,23 @@ Expressions of 'origo' feature mostly in epitaphs followed by honorific and voti
 ## What status did the people have?
 Some people declare multiple statuses so this is the maximum broadest picture.
 ```{r}
-str_split_fixed(has_origo$status, ";", n=3) %>% 
-  as.data.frame() -> status
+# Check the contents of the 'status' column in the EDH_full
+colnames(EDH_full)
+EDH_full$status
 
+# Subset to inscriptions with origo
+has_origo <- EDH_full %>% 
+  filter(!is.na(origo))
+# Parse the contents into a separate dataframe
+status <- has_origo  %>% 
+  pull(status) %>% 
+  str_split_fixed(pattern = ";", n = 3) %>% 
+  as.data.frame()
+
+# str_split_fixed(has_origo$status, ";", n = 3) %>%
+#   as.data.frame() -> status
+
+# Summarize the status
 status_counts <- status %>% 
   cbind(combined = c(status$V1,status$V2,status$V3)) %>% 
   filter(combined != "") %>% 
@@ -106,18 +127,18 @@ status_counts
 status_counts %>% 
   mutate(combined_clean = reorder(combined_clean, n)) %>% 
   ggplot(aes(y=combined_clean, x=log, fill=combined_clean)) +
-  geom_col(width=0.8) +
+  geom_col(width=0.8, show.legend = FALSE) +
   coord_cartesian( ylim = c(0,10)) +
-  labs(x = "Number of instances (log10)", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(has_origo), "inscriptions"))) +
-  geom_label(aes(label= n)) +
+  labs(x = "Number of instances (log10)", y = "Status category", title = "Status references in the EDH dataset with origo", subtitle = ggtitle(paste("n =", nrow(has_origo), "inscriptions"))) +
+  geom_label(aes(label= n), show.legend = FALSE) +
   theme_linedraw(base_size = 12) +
-  theme_minimal() 
+  theme_minimal()
 ```
 
 
-## What is the findspot vs origo
+## What is the findspot vs origo - switch to parquet !
 ```{r}
-EDH_people %>% 
+EDH_full %>% 
   filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
   select(origo, findspot_ancient_clean) %>% 
   count(findspot_ancient_clean, origo, sort=T)
@@ -247,7 +268,7 @@ lines_sf$length_km %>%
 sum(unclass(lines_sf$length_km)) / nrow(EDH_origo) #in kilometers not meters
 ```
 
-## Walk around the Empire with MapBoxAPI
+## Walk around the Empire with MapBoxAPIe
 Let's see which origins are most common. 
 ```{r}
 EDH_origo %>% 

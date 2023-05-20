@@ -35,8 +35,12 @@ library(leaflet)
 #list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
 #EDH_tibble <- as_tibble(list_json)
 
-# download as a local copy from Zenodo
+# download (manually) as a local copy from Zenodo
+# version 2021
 #download.file("https://zenodo.org/record/4888168/files/EDH_text_cleaned_2021-01-21.json?download=1", "../data/EDH_text_cleaned_2021-01-21.json")
+
+#version 2022 (81883)
+download.file("https://zenodo.org/record/7303886/files/EDH_text_cleaned_2022-11-03.json?download=1", "../data/EDH_text_cleaned_2022-11-03.json")
 
 ```
 
@@ -44,6 +48,7 @@ library(leaflet)
 ## Loading data locally
 ```{r}
 list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2021-01-21.json")
+list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2022-11-03.json") # bigint_as_char error
 EDH_tibble <- as_tibble(list_json)
 #dir.create("../figures")
 ```
@@ -90,10 +95,11 @@ EDH_tibble$people[1:2]
 EDH_unnested<- EDH_tibble %>% 
   dplyr::select(id, people) %>% 
   unpack(people) %>% 
-  unnest_wider(people, simplify = TRUE) %>% 
+  unnest_wider(people, simplify = TRUE) 
+EDH_unnested <- EDH_unnested%>% 
   unnest_longer(c(person_id,name, cognomen, nomen, supernomen, gender, praenomen, `age: years`, `age: months`, `age: days`, `age: hours`, status, occupation, tribus, origo))
 
-# selecting only inscriptions that have people
+ # selecting only inscriptions that have people
 
 EDH_people <- EDH_unnested %>% 
   filter(!is.na(person_id))
@@ -107,9 +113,10 @@ EDH_unnested %>%
 
 
 ```{r}
+head(EDH_people) 
 # merge EDH people with some attributes from the EDH tibble (inscription type, findspot etc.)
 
-EDH_full <- left_join(EDH_tibble, EDH_people, by = c("id" = "id"))
+EDH_full <- left_join(EDH_people, EDH_tibble, by = c("id" = "id"))
 
 ```
 
