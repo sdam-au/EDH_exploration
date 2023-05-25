@@ -32,23 +32,23 @@ library(leaflet)
 ## Loading data from Sciencedata.dk
 
 ```{r}
-#list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
+list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
 #EDH_tibble <- as_tibble(list_json)
 
 # download (manually) as a local copy from Zenodo
 # version 2021
 #download.file("https://zenodo.org/record/4888168/files/EDH_text_cleaned_2021-01-21.json?download=1", "../data/EDH_text_cleaned_2021-01-21.json")
 
-#version 2022 (81883)
-download.file("https://zenodo.org/record/7303886/files/EDH_text_cleaned_2022-11-03.json?download=1", "../data/EDH_text_cleaned_2022-11-03.json")
+# version 2022 (81883)
+# download.file("https://zenodo.org/record/7303886/files/EDH_text_cleaned_2022-11-03.json?download=1", "../data/EDH_text_cleaned_2022-11-03.json")
 
 ```
 
 
 ## Loading data locally
 ```{r}
-list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2021-01-21.json")
-list_json <- jsonlite::fromJSON("../data/EDH_text_cleaned_2022-11-03.json") # bigint_as_char error
+list_json <- jsonlite::fromJSON("../data/large_data/EDH_text_cleaned_2021-01-21.json") #rror in parse_con(txt, bigint_as_char) : parse error: premature EOF
+list_json <- jsonlite::fromJSON("../data/large_data/EDH_text_cleaned_2022-11-03.json") 
 EDH_tibble <- as_tibble(list_json)
 #dir.create("../figures")
 ```
@@ -56,6 +56,7 @@ EDH_tibble <- as_tibble(list_json)
 Display the first 6 records
 ```{r}
 head(EDH_tibble)
+
 ```
 
 
@@ -85,17 +86,20 @@ Specific case (gender composition)
 
 
 
-
+People attribute contains many more attributes 
 ```{r}
 EDH_tibble$people[1:2]
 ```
 
 ```{r}
-# unnesting the nsted dataframe people
+# unnesting the nested dataframe people
 EDH_unnested<- EDH_tibble %>% 
   dplyr::select(id, people) %>% 
-  unpack(people) %>% 
+  unpack(people)  %>% 
   unnest_wider(people, simplify = TRUE) 
+
+#Error in col_to_wide(col = data[[col]], name = col_name, strict = strict, :
+
 EDH_unnested <- EDH_unnested%>% 
   unnest_longer(c(person_id,name, cognomen, nomen, supernomen, gender, praenomen, `age: years`, `age: months`, `age: days`, `age: hours`, status, occupation, tribus, origo))
 
@@ -104,7 +108,7 @@ EDH_unnested <- EDH_unnested%>%
 EDH_people <- EDH_unnested %>% 
   filter(!is.na(person_id))
 
-
+# saveRDS(EDH_people,"../data/large_data/edh_people21.rds")
 # how many inscriptions have no people
 EDH_unnested %>% 
   filter(is.na(person_id)) %>% 

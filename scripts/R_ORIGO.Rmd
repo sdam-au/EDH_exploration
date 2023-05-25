@@ -17,6 +17,7 @@ This script should be run in sequence to R_EXPLORING PEOPLE where the necessary 
 There is the origo and then lots of findspot data, e.g., findspot_ancient, findspot_modern, their cleaned versions and findspot_certainty, 
 
 ```{r}
+EDH_people <- readRDS("../data/large_data/edh_people21.rds")
 head(EDH_people) # EDH_people comes from R_EXPLORING_PEOPLE script 
 EDH_people %>% 
   select(matches("cognomen|findspot|origo|province|geo"))
@@ -630,16 +631,35 @@ status_counts
 status_counts %>% 
   mutate(combined_clean = reorder(combined_clean, n)) %>% 
   ggplot(aes(y=combined_clean, x=n, fill=combined_clean)) +
-  geom_col(width=0.8, stat="identity") +
+  geom_bar(width=0.8, stat="identity") +
   coord_cartesian(xlim=c(0,10000)) +
   labs(x = "Number of instances", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(EDH_tibble), "inscriptions"))) +
   geom_label(aes(label= n)) +
   theme_linedraw(base_size = 13) +
   theme(legend.position = "none")
 
-ggsave("../figures/Status_overview.jpg", width = 12, height = 8) 
-ggsave("../figures/Status_overview.png", width = 12, height = 8) 
+#ggsave("../figures/Status_overview.jpg", width = 12, height = 8) 
+#ggsave("../figures/Status_overview.png", width = 12, height = 8) 
+
+
 ```
+log version
+```{r}
+status_counts %>% 
+  mutate(log=round(log10(n),1)) %>% 
+  mutate(combined_clean = reorder(combined_clean, log)) %>% 
+  ggplot(aes(y=combined_clean, x=log, fill=combined_clean)) +
+  geom_bar(width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,5)) +
+  labs(x = "Number of instances (log10)", y = "Status category", title = "Status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(EDH_people), "people in inscriptions"))) +
+  geom_label(aes(label= n)) +
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none")
+
+ggsave("../figures/Status_overviewlog.png", width = 8, height = 6) 
+
+```
+
 # Age
 
 ## How many inscriptions have ‘Age’ category?
