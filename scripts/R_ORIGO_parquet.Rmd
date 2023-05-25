@@ -30,7 +30,7 @@ romanEmpire <- read_sf("../data/pleiades_regions.geojson") # not great as they c
 
 
 # EDH provinces - the best compromise for non-overlapping provincial boundaries
-provinceEDH <- read_sf("../data/provinces_valid.geojson")
+provinceEDH <- read_sf("../data/provinces_valid_BACKUP.geojson")
 st_is_valid(provinceEDH) 
 
 # provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
