@@ -36,7 +36,7 @@ st_is_valid(provinceEDH)
 # provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
 # mapview(provinceEDH, zcol = "valid")
 
-# LIRE
+# LIRE from https://zenodo.org/record/7966484
 LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
 
 # Origo parquet
