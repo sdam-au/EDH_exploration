@@ -1,5 +1,5 @@
 ---
-title: "Origo Parquett"
+title: "Computing Ancient Roman mobility on the basis of Origo in ancient inscriptions"
 author: "Adela Sobotkova"
 date: "2023-03-23"
 output: html_document
@@ -37,7 +37,7 @@ st_is_valid(provinceEDH)
 # mapview(provinceEDH, zcol = "valid")
 
 # LIRE
-#LIRE <- st_read_parquet("../data/large_data/LIRE_contexts.parquet")
+LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
 
 # Origo parquet
 origo <- st_read_parquet("../data/origo_geo.parquet")
@@ -236,7 +236,6 @@ tm_shape(origo_start_long) +
 
 
 ```{r}
-
 # Use it as a facet in tmaps
 library(tmap)
 tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
@@ -305,12 +304,13 @@ province_flow_centroid # this may need to be done in a long format for centuries
 library(mapview)
 library(leafsync)
 
-mapview(province_centroid)
+#mapview(province_flow_centroid, cex= "birth_prov")
+
 map_origo <- mapview(province_flow_centroid, 
           map.types = "OpenStreetMap", 
         col.regions = "#940000", 
         color = "white", 
-        cex = "province_birth",
+        cex = "birth_prov",
         legend = TRUE, 
         layer.name = "Birthplaces",
         homebutton = FALSE, lwd = 0.5) 
@@ -320,7 +320,7 @@ map_dest <- mapview(province_flow_centroid,
           map.types = "OpenStreetMap", 
         col.regions = "#940000", 
         color = "white", 
-        cex = "province_death",
+        cex = "death_prov",
         legend = TRUE, 
         layer.name = "Deathplaces",
         homebutton = FALSE, lwd = 0.5)
@@ -406,15 +406,25 @@ summary(lines$length_km)
 If we add people and inscription data back to the linestrings, we can differentiate the travel by sex, status, occupation, and other social categories. 
 
 To add people into the origo points and linestrings we need to connect origo data to LIRE or EDH data hd_nr at least, but at best to id - the combination of EDH identifier and person identifier.
+Try with LIRE people
+```{r}
+# Use LIRE
+head(LIRE$EDH.ID)
+LIRE <- LIRE %>% 
+  dplyr::filter(EDH.ID %in% origo$hd_nr)
+class(LIRE$people)
+LIRE$people[1:2]
+```
+
+
 ```{r}
 # Bring in people data from EDH
 # if newest does not work, use 2021 data in rds
-list_json <- jsonlite::fromJSON("../data/large_data/EDH_text_cleaned_2022-11-03.json")  
-EDH_tibble <- as_tibble(list_json)
+# list_json <- jsonlite::fromJSON("../data/large_data/EDH_text_cleaned_2022-11-03.json")  
+# EDH_tibble <- as_tibble(list_json)
 
 # Rdata of 2021 json EDH tibble
 EDH_tibble <- readRDS("../data/large_data/edh_2021.rds")
-
 
 colnames(EDH_tibble)
 EDH_tibble$id
