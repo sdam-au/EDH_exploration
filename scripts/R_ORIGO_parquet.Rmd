@@ -105,6 +105,7 @@ origo %>%
 
 ```{r}
 colnames(origo)
+
 # Unique death locations THIS IS HIGH
 nrow(origo) - length(which(duplicated(origo$edh_point)))
 
@@ -142,7 +143,6 @@ st_is_valid(provinceEDH)
 ### Province centroids
 province_centroid <- st_centroid(provinceEDH)
 ```
-
 ## Make visuals
 
 ```{r parquet-leaflet}
@@ -257,40 +257,49 @@ tm_shape(origo_end_long) +
 ```
 
 
-## Provinces
-Here we attach birth and death province names to the origo record and generate summaries of province flow.
-```{r}
+## Birth and death province statistics
+Let's create some summaries of most frequent birth and death places
+```{r b-d-summaries}
+## Deathplace and Birthplace stats
+death_sum <- origo_end %>% 
+  st_join(provinceEDH, join = st_intersects, left = TRUE) %>% 
+  st_drop_geometry() %>% 
+  select(province) %>% 
+  group_by(province) %>% 
+  tally() %>% 
+  arrange(desc(n))
+
+## Birthplace stats
+birth_sum <- origo_start %>%
+  st_join(provinceEDH, join = st_intersects, left = TRUE) %>% 
+  st_drop_geometry() %>% 
+  select( province) %>% 
+  group_by(province) %>% 
+  tally() %>% 
+  arrange(desc(n))
+```
+
+## Birth and death provinces' names in origo
+Here we attach birth and death province names to the origo data and generate summaries of province flow.
+```{r b-d-prov-origo}
 origo_start_prov <- origo_start %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE)
-
+colnames(origo_start_prov)
 origo_end_prov <- origo_end %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE)
 
-province_start_summary <- origo_start_prov %>% 
-  st_drop_geometry() %>% 
-  select(province, pleiades_title) %>% 
-  group_by(province) %>% 
-  tally() %>% 
-  arrange(desc(n)) %>% 
-  rename(province_birth = n)
-
-province_end_summary <- origo_end_prov %>% 
-  st_drop_geometry() %>% 
-  select(province, pleiades_title) %>% 
-  group_by(province) %>% 
-  tally() %>% 
-  arrange(desc(n)) %>% 
-  rename(province_death = n)
 
 province_flow_centroid <- province_centroid %>% 
-  left_join(province_end_summary, by = "province") %>% 
-  left_join(province_start_summary, by = "province")
+  left_join(birth_sum, by = "province") %>% 
+  rename(birth_prov = n) %>% 
+  left_join(death_sum, by = "province") %>% 
+  rename(death_prov = n) 
 
 province_centroid
 province_flow_centroid # this may need to be done in a long format for centuries
 ```
 
-## Sync maps
+## Sync maps of birth and deathplaces - province centroids
 
 ```{r}
 library(mapview)
@@ -319,6 +328,36 @@ map_dest <- mapview(province_flow_centroid,
 
 sync(map_origo, map_dest) # maps need to be mapview based not tm_shape based
 ```
+
+
+## Sync maps of birth and deathplaces - province polygons
+Add stats to provinces and then create chloropleth maps arranging birth against death plot
+```{r add-d-b-data-to-province-poly}
+# we add summary data on deaths and births by province to province polygons
+provinceEDH <- provinceEDH %>% 
+  left_join(death_sum, by = "province") %>% 
+  rename(death_sum = n) %>% 
+  left_join(birth_sum, by = "province") %>% 
+  rename(birth_sum = n)
+```
+
+```{r tmap-d-b-province-poly}
+birth <- mapview(provinceEDH, zcol = "birth_sum")
+death <- mapview(provinceEDH, zcol = "death_sum")
+
+
+library(leafsync)
+sync(birth, death)
+
+b_prov <- tm_shape(provinceEDH)+
+  tm_polygons("birth_sum")
+d_prov <- tm_shape(provinceEDH)+
+  tm_polygons("death_sum")
+
+tmap_arrange(b_prov,d_prov, ncol = 2)
+```
+
+
 
 ## Distances
 ## Option A: Reuse Vojtech's linestrings
@@ -363,54 +402,6 @@ ggsave("../figures/orig_dist_certain.png", width = 8, height = 6)
 summary(lines$length_km)
 ```
 
-## Option B: Create Birth-Death place linestrings from points
-
-We connect the origo coordinates with findspot coordinates by great circles in geodetic space
-
-```{r}
-length(which(st_is_valid(origo_start$origo_point)))==length(which(st_is_valid(origo_end$edh_point)))
-
-test <- st_union(origo_start$origo_point, origo_end$edh_point)
-lines <- st_cast(test, "LINESTRING")
-st_crs(lines) <- 4326
-
-# The function is neater but does not work with geometry special columns,...yet.
-# lines <- st_sfc(mapply(function(a,b){
-#   st_cast(st_union(a,b),"LINESTRING")}, 
-#   a = origo_start$origo_point,b = origo_end$edh_point, SIMPLIFY = TRUE))
-# st_crs(lines) <- 4326
-
-library(mapview) 
-mapview(lines)
-```
-
-
-### Calculate as-the-crow-flies distances
-Let's calculate great circle distances and differentiate lines by length
-
-```{r line-length}
-# Convert lines to sf and calculate length
-lines_sf <- st_as_sf(lines)
-lines_sf$length <- st_length(lines)
-
-# Convert to km - but beware it is still declared as m
-lines_sf$length_km <- unclass(lines_sf$length/1000)
-
-# See the length visualized
-mapview(lines_sf, zcol = "length_km")
-```
-
-### Let's see the range of distances travelled
-If we connect the birth and death places with great circle distances, ignoring roads and other barriers as well as sea travel. All distances are wrong in similar way. Yet, we can assume that dying 500km away from home is serious. So even if it is only 3% people, the distances are substantial and that may be why origo is  mentioned
-If the Romans could fly as the crows, these would be their ranges.
-```{r}
-lines_sf$length_km %>% 
-  hist( main = "Great Circle distances from birth region to death region", xlab = "km")
-```
-```{r}
-# average distance traveled
-sum(unclass(lines_sf$length_km)) / nrow(origo) #in kilometers not meters
-```
 ## Break down the distances traveled by status and gender
 If we add people and inscription data back to the linestrings, we can differentiate the travel by sex, status, occupation, and other social categories. 
 
