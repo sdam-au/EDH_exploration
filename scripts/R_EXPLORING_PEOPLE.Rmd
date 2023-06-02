@@ -33,7 +33,13 @@ library(leaflet)
 
 ```{r}
 list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
+
+list_json2 <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2023-04-26.json")
 #EDH_tibble <- as_tibble(list_json)
+
+
+# Pull it from LIST
+
 
 # download (manually) as a local copy from Zenodo
 # version 2021
@@ -49,14 +55,14 @@ list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b7
 ```{r}
 list_json <- jsonlite::fromJSON("../data/large_data/EDH_text_cleaned_2021-01-21.json") #rror in parse_con(txt, bigint_as_char) : parse error: premature EOF
 list_json <- jsonlite::fromJSON("../data/large_data/EDH_text_cleaned_2022-11-03.json") 
-EDH_tibble <- as_tibble(list_json)
+EDH_tibble <- as_tibble(list_json2) # as_tibble() is boxing columns up into lists
 #dir.create("../figures")
 ```
 
 Display the first 6 records
 ```{r}
 head(EDH_tibble)
-
+EDH_tibble$people[1:2]
 ```
 
 
