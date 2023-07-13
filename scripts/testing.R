@@ -12,6 +12,32 @@ library(purrr)
 #Following tidyverse_wiki https://tidyr.tidyverse.org/reference/unnest_wider.html
 LIST$people
 
+# with parquet
+
+arsedLIST <- LIST %>% 
+  select(`LIST.ID`, `EDH.ID`, people) %>% 
+  filter(!is.na(EDH.ID)) %>% 
+  slice(1:970) %>% 
+  unnest_wider(people, names_sep = "_") %>%  # put each person in a separate column
+  filter(!is.na(people_1)) %>% 
+  pivot_longer(cols = starts_with("people"), #  put each person in a separate row
+               names_to = "people",
+               values_drop_na = T) %>% 
+  mutate(peoplenew = paste0("[",value,"]")) %>% 
+  mutate(peoplenew = map(peoplenew, ~ jsonlite::fromJSON(.) %>% as.data.frame())) %>% 
+  unnest_wider(peoplenew) %>% 
+  unnest_wider(persname) %>% 
+  select(-value) #%>% 
+  rename(id = `@{http://www.w3.org/XML/1998/namespace}id`,
+         sex = `@sex`,
+         person_url = `@ref`)
+  
+LISTpeople <- arsedLIST %>% 
+    unnest_wider(name, names_sep = "_") %>% 
+    unnest(name_1, names_sep = "_") %>% 
+    pivot_wider(names_from =`name_1_@type`,values_from = `name_1_#text`)# %>% 
+# with geojson
+
 parsedLIST <- LIST %>% 
   select(`LIST-ID`, `EDH-ID`, people) %>% 
   unnest_wider(people, names_sep = "_") %>%  # put each person in a separate column

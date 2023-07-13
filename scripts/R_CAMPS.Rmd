@@ -1,0 +1,76 @@
+---
+title: "Roman camps"
+output: html_notebook
+---
+
+This script is complementary to R_ORIGO_parquet.Rmd and adds to the birth- and death places for ancient travelers the distribution of Roman military camps. Most of our travelers are military personnel which makes camps important as attractors.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+library(sf)
+library(googlesheets4)
+
+library(sfarrow)
+library(mapview)
+```
+
+## Load geocoded Roman forts, camps and other temporary establishments
+These data were geocoded by Mathias Johansen. There are 1585 camp names and 1575 camps with non-missing coordinates.
+If the read_sheet() function is not working, use the gs4_deauth() command first.
+```{r}
+
+## gs4_deauth() # uncomment if you have difficulties with Google Drive authentication
+
+camps <- read_sheet("https://docs.google.com/spreadsheets/d/1Xb6MJU7yOpr4sxnEA_GeL9TMo_oaWB-vtOmYk9ox2JY/edit#gid=1563351813", range = "Castra")
+
+colnames(camps) # check column names
+glimpse(camps) # check column content
+
+camps_sp <- camps %>% 
+  filter(!is.na(Long)) %>%   # there are at least 10 camps that lack coordinates, which cannot be put on the map
+  st_as_sf(coords = c("Long", "Lat"), crs = 4326)
+
+
+mapview(camps_sp, zcol = "Function")
+```
+## Leaflet map
+
+```{r}
+library(leaflet)
+
+leaflet() %>%
+  addTiles() %>%
+  setView(36, 30, zoom = 3) %>% 
+  addCircles(data = camps_sp, label = camps_sp$ModernName) %>% 
+addMiniMap(tiles = 'Esri.WorldTopoMap', toggleDisplay = TRUE,
+             position = "bottomright")
+
+```
+
+```{r}
+# Heatmap is in the extras!
+install.packages("leaflet.extras")
+library(leaflet.extras)
+
+camps %>% 
+  filter(!is.na(Lat)) %>% 
+  leaflet() %>%
+  addTiles() %>%
+  setView(36, 30, zoom = 3) %>% 
+  addHeatmap(lng=~as.numeric(Long),
+             lat=~as.numeric(Lat),
+             radius = 5) %>% 
+  addCircles(data = camps_sp, label = camps_sp$ModernName) %>%
+  addMiniMap(tiles = 'Esri.WorldTopoMap', toggleDisplay = TRUE,
+             position = "bottomright") %>%
+  addMeasure(
+    position = "bottomleft",
+    primaryLengthUnit = "meters",
+    primaryAreaUnit = "sqmeters",
+    activeColor = "#3D535D",
+    completedColor = "#7D4479")
+```
+

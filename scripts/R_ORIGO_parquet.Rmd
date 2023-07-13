@@ -25,11 +25,11 @@ library(mapview)
 
 *What are all these datasets? Explanation is needed!*
 ```{r data}
-# Pleiades provinces
+# Pleiades provinces data have overlapping variants without description
 romanEmpire <- read_sf("../data/pleiades_regions.geojson") # not great as they collate all province changes over time without identities
 
 
-# EDH provinces - the best compromise for non-overlapping provincial boundaries
+# EDH provinces - the best compromise for non-overlapping provincial boundaries, from VOjtech on the basis of EDH provinces
 provinceEDH <- read_sf("../data/provinces_valid_BACKUP.geojson")
 st_is_valid(provinceEDH) 
 
@@ -39,7 +39,7 @@ st_is_valid(provinceEDH)
 # LIRE from https://zenodo.org/record/7966484
 LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
 
-# Origo parquet
+# Origo parquet of linestrings is drawn from the pleiades point geocoded on the basis of origo by Mathias and Vojtech travelling towards EDH_point generated from findspot, produced by EDH editors.
 origo <- st_read_parquet("../data/origo_geo.parquet")
 
 # paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet")
@@ -47,7 +47,7 @@ origo <- st_read_parquet("../data/origo_geo.parquet")
 
 ## Birth locations geocoded in the *origo* column
 
-Birth locations were geocoded on the basis of 'placename' in the EDH dataset. This field is unstructured text and suffers from ambiquity, incompleteness, spelling inconsistency and varied levels of granularity. It was first automatically (30% worked) and later manually geocoded (90% of the remaining 70%).
+Birth locations in the "origo" attribute were geocoded on the basis of 'domicile' expressed in the texts of the EDH dataset with expressions such as ex domo, ex natio, etc.. This field is unstructured text and suffers from ambiquity, incompleteness, spelling inconsistency and varied levels of granularity. It was first automatically (30% worked) and later manually geocoded (90% of the remaining 70%).
 
 This chunk investigates the frequency and uniqueness of placenames in the origo column as well as their spatial and nomical overlap. While we have 2277 people with geocodable origo, they are named on 1951 inscriptions, mention 1083 placenames, which we have traced (with more or less certainty) to 663 unique physical locations. WHen geocoding, ca 76% of locations are geocoded with certainty, 12% have multiple good variants, 7% are uncertain and 5% represent a wild guess. 
 ```{r}
@@ -102,7 +102,7 @@ origo %>%
 ```
 
 ## Death locations
-
+Death locations are represented by findspot in edh_point attribute.
 ```{r}
 colnames(origo)
 
@@ -113,30 +113,30 @@ nrow(origo) - length(which(duplicated(origo$edh_point)))
 ```
 
 ## Spatial Data Streamlining
-Create two point simple features using the point columns in origo. Call origin origo_start coordinates and deathplace origo_end
+Create two point simple features using the point columns in origo. Call origin birthplace coordinates and deathplace deathplace
 ```{r}
-names(origo) # edh point is the active geoemtry
-origo_end <- origo %>%
+names(origo) # edh point is the active geometry
+deathplace <- origo %>%
   st_as_sf() %>% 
   st_set_crs(4326) %>% #mapview(zcol = "certainty")
   st_transform(3035)
-origo_start <- origo %>%  # switching active geometry to ori
+birthplace <- origo %>%  # switching active geometry to ori
   st_drop_geometry() %>% 
   st_as_sf(coords = c("pleiades_Longitude","pleiades_Latitude"), crs = 4326)  %>% 
   st_transform(3035)
 
-origo_start$origo_point
+birthplace$origo_point
 
 origo$edh_point # no CRS
-origo_end$geometry # is NULL
-origo_end$edh_point # contains data
+deathplace$geometry # is NULL
+deathplace$edh_point # contains data
 ```
 
 ### Check province and origo alignment: projection and validity
 ```{r}
 # edh province polygons need clean up - NOT FINISHED
-st_crs(provinceEDH) == st_crs(origo_start)
-st_crs(provinceEDH) == st_crs(origo_end)
+st_crs(provinceEDH) == st_crs(birthplace)
+st_crs(provinceEDH) == st_crs(deathplace)
 
 st_is_valid(provinceEDH)
 
@@ -164,23 +164,23 @@ leaflet() %>%
 ```{r certainty-percent}
 # Tally by certainty to see how many were easily geocoded
 
-origo_start %>%
+birthplace %>%
   group_by(certainty) %>%
   tally() %>% 
   mutate(pctGeocodingCertainty = round(n/2277 *100,1))
 ```
 
 ## Prepare for time-series
-Iin order to create a facetted view of change over time, we need the century values (present/absent) to be in a single column, and not spread over several columns. Therefore we shall pivot the dataset from wide to longer and compress the individual century columns with T/F values into a single 'century' column with a row for every century the inscription was in existence.
+In order to create a facetted view of change over time, we need the century values (present/absent) to be in a single column, and not spread over several columns. Therefore we shall pivot the dataset from wide to longer and compress the individual century columns with T/F values into a single 'century' column with a row for every century the inscription was in existence.
 ```{r pivot-long}
-# See the ~X1BCE fields in the dataset which indicate presence/absense in a given century
+# See the ~X1BCE fields in the dataset which indicate presence/absence in a given century
 names(origo)
 
 unique(origo$certainty)
 
-# Wrangle into a long dataset
+# Wrangle the origo linestring data into a long dataset centered on deathplace
 
-origo_end_long <- origo_end %>%  
+deathplace_long <- deathplace %>%  
   select(-origo_line) %>% 
   pivot_longer(cols = X1BCE:X5CE,  # take values from columns and write through True/False
                names_to = "century",
@@ -188,9 +188,9 @@ origo_end_long <- origo_end %>%
   filter(century_logical == TRUE)
 
 
-# Repeat for origo _point geometry
+# Repeat for origo_point geometry into a long dataset centered on birthplace
 
-origo_start_long <- origo_start %>%  
+birthplace_long <- birthplace %>%  
   select(-origo_line) %>% 
   pivot_longer(cols = X1BCE:X5CE, 
                names_to = "century",
@@ -207,7 +207,7 @@ origo_start_long <- origo_start %>%
 
 library(mapview) 
 
-mapview(origo_start, zcol = "certainty")
+mapview(birthplace, zcol = "certainty")
 ```
 
 
@@ -220,7 +220,7 @@ tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
 tmap_options(check.and.fix = TRUE)
 tmap_mode(mode = "view" )
 
-tm_shape(origo_start_long) +
+tm_shape(birthplace_long) +
   tm_facets(by = "century",
                 ncol=2, nrow = 3)+
   tm_dots("certainty")+
@@ -242,7 +242,7 @@ tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
 tmap_options(check.and.fix = TRUE)
 tmap_mode(mode = "view" )
 
-tm_shape(origo_end_long) +
+tm_shape(deathplace_long) +
   tm_facets(by = "century",
          
             ncol=2, nrow = 3)+
@@ -255,12 +255,39 @@ tm_shape(origo_end_long) +
             legend.outside = TRUE)
 ```
 
+## Diachronic stats
+
+```{r}
+colnames(deathplace)
+library(janitor)
+
+total_travellers <- deathplace %>%
+  st_drop_geometry() %>% 
+  select(id, X1BCE:X5CE) %>%
+  mutate_if(is.logical,as.numeric) %>% 
+  adorn_totals("row", name = "Total_Travelers") %>% 
+  slice(2278)
+  
+
+library(kableExtra)
+
+knitr::kable(total_travellers, col.names = c("Century","1BCE", "1CE", "2CE", "3CE", "4CE", "5CE"),  align = "lcccccc", caption = "Traveler volume by century.") %>% 
+    kable_styling(latex_options = "striped")
+
+
+```
+
+# Facet distances by century 
+```{r}
+
+```
+
 
 ## Birth and death province statistics
 Let's create some summaries of most frequent birth and death places
 ```{r b-d-summaries}
 ## Deathplace and Birthplace stats
-death_sum <- origo_end %>% 
+death_sum <- deathplace %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE) %>% 
   st_drop_geometry() %>% 
   select(province) %>% 
@@ -269,7 +296,7 @@ death_sum <- origo_end %>%
   arrange(desc(n))
 
 ## Birthplace stats
-birth_sum <- origo_start %>%
+birth_sum <- birthplace %>%
   st_join(provinceEDH, join = st_intersects, left = TRUE) %>% 
   st_drop_geometry() %>% 
   select( province) %>% 
@@ -281,10 +308,10 @@ birth_sum <- origo_start %>%
 ## Birth and death provinces' names in origo
 Here we attach birth and death province names to the origo data and generate summaries of province flow.
 ```{r b-d-prov-origo}
-origo_start_prov <- origo_start %>% 
+birthplace_prov <- birthplace %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE)
-colnames(origo_start_prov)
-origo_end_prov <- origo_end %>% 
+colnames(birthplace_prov)
+deathplace_prov <- deathplace %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE)
 
 
@@ -401,13 +428,60 @@ ggsave("../figures/orig_dist_certain.png", width = 8, height = 6)
 ```{r}
 summary(lines$length_km)
 ```
+## Break distances down by century
+
+```{r}
+# Make lines into a long dataset
+colnames(lines)
+lines_long <- lines %>%  
+  #select(-origo_line) %>% 
+  pivot_longer(cols = X1BCE:X5CE,  # take values from columns and write through True/False
+               names_to = "century",
+               values_to = "century_logical") %>% 
+  filter(century_logical == TRUE)
+colnames(lines_long)
+
+
+# Histogram of distances
+ggplot(lines_long %>% filter(certainty == "certain"), aes(x = length_km))+
+  geom_histogram(bins = 100, aes(fill = certainty) )+
+  ggtitle(label = "Life to death distance over centuries") +
+  theme_bw() +
+  theme(#legend.title=element_blank(),
+         #legend.position = c(.88,.94)
+          legend.position="none")+
+  labs(x = "Distance in kms",
+       y = "Number of travellers",
+       fill = "Birthplace coordinates")+
+  facet_grid(rows = vars(century)) 
+
+ggsave("../figures/orig_distc_centuries.png", width = 20, units = 
+        "cm")
+
+# Histogram of distances
+ggplot(lines_long, aes(x = length_km))+
+  geom_histogram(bins = 100, aes(fill = certainty) )+
+  ggtitle(label = "Life to death distance over centuries") +
+  theme_bw() +
+  theme(#legend.title=element_blank(),
+        legend.position = c(.88,.90)
+         )+
+  labs(x = "Distance in kms",
+       y = "Number of travellers",
+       fill = "Birthplace coordinates")+
+  facet_grid(rows = vars(century)) 
+
+ggsave("../figures/orig_distall_centuries.png", width = 20, height = 20, units = 
+        "cm")
+```
+
 
 ## Break down the distances traveled by status and gender
 If we add people and inscription data back to the linestrings, we can differentiate the travel by sex, status, occupation, and other social categories. 
 
 To add people into the origo points and linestrings we need to connect origo data to LIRE or EDH data hd_nr at least, but at best to id - the combination of EDH identifier and person identifier.
 Try with LIRE people
-```{r}
+```{r eval=FALSE}
 # Use LIRE
 head(LIRE$EDH.ID)
 LIRE <- LIRE %>% 
@@ -611,22 +685,22 @@ https://www.kaggle.com/code/paulc91/visualise-flows-with-r-d3/report  # the best
 ```{r eval=FALSE}
 # Sankey network data preparation
 
-top_orig <- origo_start_prov %>%
+top_orig <- birthplace_prov %>%
   st_drop_geometry() %>% 
   group_by(province) %>% 
   tally() %>% 
   top_n(20, n)
 
-top_dest <- origo_end_prov%>%
+top_dest <- deathplace_prov%>%
   st_drop_geometry() %>% 
   group_by(province) %>% 
   tally() %>% 
   top_n(20, n)
 
-travellers <- origo_start_prov %>% 
+travellers <- birthplace_prov %>% 
   st_drop_geometry() %>% 
   rename(origin=province) %>% 
-  left_join(st_drop_geometry(origo_end_prov)[c(1:2,5,22)], by = "id") %>% 
+  left_join(st_drop_geometry(deathplace_prov)[c(1:2,5,22)], by = "id") %>% 
   rename(destination = province) %>% 
   relocate(origin, destination, .before = origo)
 
@@ -690,9 +764,9 @@ Needs - to be cleaned up to white background and contours and provinces in the b
 
 ```{r eval=FALSE}
 ggplot() +
-  stat_density_2d(data = origo_start_long,
-                  mapping = aes(x = purrr::map_dbl(origo_start, ~.[1]),
-                                y = purrr::map_dbl(origo_start, ~.[2]),
+  stat_density_2d(data = birthplace_long,
+                  mapping = aes(x = purrr::map_dbl(birthplace, ~.[1]),
+                                y = purrr::map_dbl(birthplace, ~.[2]),
                                 fill = stat(density)),
                   geom = "tile",
                   contour = F,

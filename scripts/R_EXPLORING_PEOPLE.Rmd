@@ -32,9 +32,9 @@ library(leaflet)
 ## Loading data from Sciencedata.dk
 
 ```{r}
-list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json")
+list_json <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2021-01-21.json") # this dataset still works
 
-list_json2 <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2023-04-26.json")
+list_json2 <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_text_cleaned_2023-04-26.json") # is not working as the dataset lacks the person_id in separate column
 #EDH_tibble <- as_tibble(list_json)
 
 
