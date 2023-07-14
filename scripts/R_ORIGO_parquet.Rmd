@@ -37,7 +37,8 @@ st_is_valid(provinceEDH)
 # mapview(provinceEDH, zcol = "valid")
 
 # LIRE from https://zenodo.org/record/7966484
-LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
+#LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
+
 
 # Origo parquet of linestrings is drawn from the pleiades point geocoded on the basis of origo by Mathias and Vojtech travelling towards EDH_point generated from findspot, produced by EDH editors.
 origo <- st_read_parquet("../data/origo_geo.parquet")
@@ -109,7 +110,7 @@ colnames(origo)
 # Unique death locations THIS IS HIGH
 nrow(origo) - length(which(duplicated(origo$edh_point)))
 
-# only 484 unique destinations for all the travellers
+# only 484 unique destinations for all the travelers
 ```
 
 ## Spatial Data Streamlining
@@ -261,7 +262,7 @@ tm_shape(deathplace_long) +
 colnames(deathplace)
 library(janitor)
 
-total_travellers <- deathplace %>%
+total_travelers <- deathplace %>%
   st_drop_geometry() %>% 
   select(id, X1BCE:X5CE) %>%
   mutate_if(is.logical,as.numeric) %>% 
@@ -271,16 +272,12 @@ total_travellers <- deathplace %>%
 
 library(kableExtra)
 
-knitr::kable(total_travellers, col.names = c("Century","1BCE", "1CE", "2CE", "3CE", "4CE", "5CE"),  align = "lcccccc", caption = "Traveler volume by century.") %>% 
+knitr::kable(total_travelers, col.names = c("Century","1BCE", "1CE", "2CE", "3CE", "4CE", "5CE"),  align = "lcccccc", caption = "Traveler volume by century.") %>% 
     kable_styling(latex_options = "striped")
 
 
 ```
 
-# Facet distances by century 
-```{r}
-
-```
 
 
 ## Birth and death province statistics
@@ -408,29 +405,41 @@ lines$length_m <- st_length(lines)  # geodetic distance
 # Get rid of units and create kms
 lines$length_km <- unclass(lines$length_m)/1000  
 
+```
+## Histogram of distances by origo certainty
+```{r}
 # Histogram of distances
 ggplot(lines, aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = certainty))+
-  ggtitle(label = "Great circle distances between birth and death location by origo geocoding certainty")+
+  ggtitle(label = "Birth to death distances by birthplace geocoding certainty")+
   theme_bw()+
   theme(#legend.title=element_blank(),
         legend.position = c(.85,.75))+
   labs(x = "Distance in kms",
-       y = "Number of travellers",
-       fill = "Origo coordinates")
+       y = "Persons",
+       fill = "Origo coordinates")+
+  geom_vline(aes(xintercept = mean(length_km)), linetype = "dashed", size = 1)
 
 ggsave("../figures/orig_dist_certain.png", width = 8, height = 6)
 ```
 
 
 
-### summary
+### Trip length summary statistics
 ```{r}
+# al trips
 summary(lines$length_km)
-```
-## Break distances down by century
 
-```{r}
+# only certain birthplaces
+summary(lines[lines$certainty == "certain",]$length_km) # 1746
+
+lines %>% filter(certainty == "certain")
+```
+## Break distances down by century - histograms & timeseries
+
+
+```{r long-lines}
+
 # Make lines into a long dataset
 colnames(lines)
 lines_long <- lines %>%  
@@ -441,33 +450,55 @@ lines_long <- lines %>%
   filter(century_logical == TRUE)
 colnames(lines_long)
 
+```
 
-# Histogram of distances
-ggplot(lines_long %>% filter(certainty == "certain"), aes(x = length_km))+
+```{r facetted-timeseries}
+# Facetted histogram of distances through time - only certain
+mean_certain <- lines_long %>% 
+  st_drop_geometry() %>%
+  filter(certainty == "certain") %>% 
+  group_by(century) %>% 
+  summarize(average = mean(length_km))
+
+lines_long %>% 
+  filter(certainty == "certain") %>% 
+  ggplot(aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = certainty) )+
+  geom_vline(aes(xintercept = average), mean_certain, linetype = "dashed")+
   ggtitle(label = "Life to death distance over centuries") +
   theme_bw() +
   theme(#legend.title=element_blank(),
          #legend.position = c(.88,.94)
           legend.position="none")+
   labs(x = "Distance in kms",
-       y = "Number of travellers",
+       y = "Number of travelers",
        fill = "Birthplace coordinates")+
   facet_grid(rows = vars(century)) 
 
 ggsave("../figures/orig_distc_centuries.png", width = 20, units = 
         "cm")
 
-# Histogram of distances
-ggplot(lines_long, aes(x = length_km))+
+```
+
+```{r facet-timeseries-all}
+# Facetted histogram of distances through time - all, including uncertain
+mean_all <- lines_long %>% 
+  st_drop_geometry() %>%
+  #ilter(certainty == "certain") %>% 
+  group_by(century) %>% 
+  summarize(average = mean(length_km))
+
+lines_long %>% 
+  ggplot(aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = certainty) )+
+  geom_vline(aes(xintercept = average), mean_all, linetype = "dashed")+
   ggtitle(label = "Life to death distance over centuries") +
   theme_bw() +
   theme(#legend.title=element_blank(),
         legend.position = c(.88,.90)
          )+
   labs(x = "Distance in kms",
-       y = "Number of travellers",
+       y = "Number of travelers",
        fill = "Birthplace coordinates")+
   facet_grid(rows = vars(century)) 
 
@@ -475,6 +506,107 @@ ggsave("../figures/orig_distall_centuries.png", width = 20, height = 20, units =
         "cm")
 ```
 
+### Cumulative Distance by century stats
+
+```{r}
+lines_long %>% 
+  st_drop_geometry() %>% 
+  filter(certainty == "certain") %>% 
+  mutate(triplength = case_when(
+    length_km < 200 ~ "short (<200km)",
+    length_km < 1000 ~ "medium (200-1000km) ",
+    length_km > 1000 ~ "long (1000km+)"
+  )) %>% 
+  group_by(century) %>% 
+  summarize(total_distance = round(sum(length_km)),
+            mean_distance = round(mean(length_km)),
+            trips = n()) %>% 
+  t()
+
+lines_long %>% 
+  st_drop_geometry() %>% 
+ # filter(certainty == "certain") %>% 
+  mutate(triplength = case_when(
+    length_km < 200 ~ "short (<200km)",
+    length_km < 1000 ~ "medium (200-1000km) ",
+    length_km > 1000 ~ "long (1000km+)"
+  )) %>% 
+  group_by(century, triplength) %>% 
+  summarize(total_distance = round(sum(length_km)),
+            mean_distance = round(mean(length_km)),
+            trips = n()) %>% 
+  t()
+```
+
+### Cumulative Distance by century barplot
+
+```{r cum-dist-certain}
+options(scipen = 999)
+
+lines_long %>% 
+  st_drop_geometry() %>% 
+  filter(certainty == "certain") %>% 
+  mutate(triplength = case_when(
+    length_km < 200 ~ "short (<200km)",
+    length_km < 1000 ~ "medium (200-1000km) ",
+    length_km > 1000 ~ "long (1000km+)"
+  )) %>% 
+  group_by(century, triplength) %>% 
+  summarize(total_distance = round(sum(length_km)),
+            mean_distance = round(mean(length_km)),
+            trips = n()) %>% 
+  ungroup() %>% 
+  mutate(century = paste0(rep(c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE"),each = 3))) %>% 
+  ggplot(aes(x = century, y = total_distance))+
+   geom_col(aes(fill = triplength)) + 
+    scale_fill_grey()+ # B&W version
+   # geom_line(y = mean_distance, aes(color = "red")) +
+  # scale_y_continuous("Total distance traveled", sec.axis= sec_axis(~ ./trips, name = "Average distance")) +
+  # scale_x_continuous("Century", breaks = 1:6) +
+  ggtitle("Cumulative distances over time") +
+  theme_bw() +
+    theme( #legend.title= element_blank(),
+          legend.position = c(.85,.75))+
+   labs(x = "Century",
+       y = "Cumulative distance (km)",
+       fill = "Trip length")
+
+ggsave("../figures/origcert_distcum_centuriesBW.png", width = 8, height = 6)
+```
+
+all origos including uncertain ones
+```{r cum-dist-all}
+options(scipen = 999)
+
+lines_long %>% 
+  st_drop_geometry() %>% 
+  #filter(certainty == "certain") %>% 
+  mutate(triplength = case_when(
+    length_km < 200 ~ "short",
+    length_km < 560 ~ "medium",
+    length_km > 560 ~ "long"
+  )) %>% 
+  group_by(century, triplength) %>% 
+  summarize(total_distance = round(sum(length_km)),
+            mean_distance = round(mean(length_km)),
+            trips = n()) %>% 
+  ungroup() %>% 
+  mutate(century = paste0(rep(c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE"),each = 3))) %>% 
+  ggplot(aes(x = century, y = total_distance))+
+   geom_col(aes(fill = triplength)) + 
+   # geom_line(y = mean_distance, aes(color = "red")) +
+  # scale_y_continuous("Total distance traveled", sec.axis= sec_axis(~ ./trips, name = "Average distance")) +
+  # scale_x_continuous("Century", breaks = 1:6) +
+  ggtitle("Cumulative distances over time") +
+  theme_bw() +
+    theme( #legend.title= element_blank(),
+          legend.position = c(.85,.75))+
+   labs(x = "Century",
+       y = "Cumulative distance (km)",
+       fill = "Trip length")
+
+ggsave("../figures/origall_distcum_centuries.png", width = 8, height = 6)
+```
 
 ## Break down the distances traveled by status and gender
 If we add people and inscription data back to the linestrings, we can differentiate the travel by sex, status, occupation, and other social categories. 
@@ -524,8 +656,6 @@ EDH_origo_people %>% group_by(id)
 head(EDH_origo_people)
 colnames(EDH_origo_people)
 
-
-colnames(origo_people)
 ```
 
 Now that we identified the columns that are shared, we can connect spatial data to personal information to learn about the status and gender of travelers
@@ -544,16 +674,16 @@ lines_people <- lines %>%
 ```
 
 ## Visualize distances traveled by status and gender
-### Distance and occupation
-a fraction of travellers mention their occupation
+## Distance and occupation
+a fraction of travelers mention their occupation, graphs are not worth publishing
 ```{r}
-# Show how many travellers provide occupation info
+# Show how many travelers provide occupation info
 ggplot(lines_people, aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = occupation))+
   ggtitle(label = "Great Circle distances from birth region to death region")+
   theme_bw()+
   labs(x = "Distance in kms",
-       y = "Number of travellers")
+       y = "Number of travelers")
 
 ggsave("../figures/orig_dist_occup.png", width = 8, height = 6)
 
@@ -563,17 +693,17 @@ lines_people %>%
   filter(!is.na(occupation)) %>% 
   ggplot(aes(x = length_km))+
   geom_histogram(bins = 100)+
-  ggtitle(label = "Birth to death distances for travellers with occupation (56 out of 2277)")+
+  ggtitle(label = "Birth to death distances for travelers with occupation (56 out of 2277)")+
   theme_bw()+
   labs(x = "Distance in kms",
-       y = "Travellers with an occupation")
+       y = "Travelers with an occupation")
 ```
 
 Traveling individuals rarely state their occupation. Howeer most are soldiers so the occupation is clear. The occupation of others is driven by their social status of being senators ao slaves,..
-### Distance and gender
+## Distance and gender
 a fraction of women declare origo
 ```{r}
-# Show breakdown of travellers distances by gender
+# Show breakdown of travelers distances by gender
 ggplot(lines_people, aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = gender))+
   ggtitle(label = "Birth to death distances by gender")+
@@ -581,7 +711,7 @@ ggplot(lines_people, aes(x = length_km))+
   theme(legend.title=element_blank(),
         legend.position = c(.85,.75))+  # works only after theme_bw()
   labs(x = "Distance in kms",
-       y = "Gendered travellers")
+       y = "Gendered travelers")
 
 ggsave("../figures/orig_dist_gender.png", width = 8, height = 6)
 ```
@@ -599,11 +729,11 @@ ggplot(lines_people, aes(x = length_km))+
   ggtitle(label = "Birth to death distances by gender")+
   theme_bw()+
   labs(x = "Distance in kms",
-       y = "Gendered travellers")
+       y = "Gendered travelers")
 
 ```
 
-### Distance by status
+## Distance by status
 ```{r}
 # Pull the first primary status out of the multi-valued attribute
 status <- str_split_fixed(lines_people$status, ";", n=3) %>% 
@@ -623,15 +753,15 @@ ggplot(data = lines_status,  aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = status_clean))+
   theme_bw()+
   theme(#legend.title=element_blank(),
-        legend.position = c(.85,.75))+
-  labs(title = "Birth to death distances differentiated by traveller status (1477 out of 2277)",
+        legend.position = c(.75,.75))+
+  labs(title = "Birth to death distances by traveler status (1477 out of 2277)",
        x = "Distance in kms",
-       y = "Travellers ", 
+       y = "Persons", 
        fill = "Primary status")
 
 ggsave("../figures/orig_dist_status.png", width = 8, height = 6)
 ```
-### Faceted plot by status
+## Faceted plot by status
 ```{r}
 # Plot status by distance
 ggplot(data = lines_status,  aes(x = length_km))+
@@ -639,15 +769,15 @@ ggplot(data = lines_status,  aes(x = length_km))+
   facet_wrap(~ status_clean)+
   theme_bw()+
   theme(legend.position = "bottom")+
-  labs(title = "Birth to death distances by traveller status (1477 out of 2277)",
+  labs(title = "Birth to death distances by traveler status (1477 out of 2277)",
         x = "Distance in kms",
-        y = "Traveller count", 
+        y = "Traveler count", 
         fill = "Origo location")
 
 ggsave("../figures/orig_dist_occupfac.png", width = 8, height = 6)
 ```
 
-### What is the status count
+## What is the status count
 ```{r}
 lines_status %>% 
   st_drop_geometry() %>% 
@@ -669,11 +799,6 @@ ggsave("../figures/Status_origo.png", width = 8, height = 6)
 ```
 
 
-### Frequency counts of travel distance TO DO!
-Which travel intervals are taken by what percent of travelers? Follow Kraemer reporting.
-
-## TRAVEL IN TIME by status and gender TO DO!!
-Are there more senators in the first 2 centuries and more soldiers in the remaining time? How are statuses and gender distributed?
 
 ## Sankey COPIED BUT NOt working YET - ELABORATE!
 https://stackoverflow.com/questions/63255589/create-a-sankey-diagram-with-tidy-data-in-r
@@ -697,15 +822,15 @@ top_dest <- deathplace_prov%>%
   tally() %>% 
   top_n(20, n)
 
-travellers <- birthplace_prov %>% 
+travelers <- birthplace_prov %>% 
   st_drop_geometry() %>% 
   rename(origin=province) %>% 
   left_join(st_drop_geometry(deathplace_prov)[c(1:2,5,22)], by = "id") %>% 
   rename(destination = province) %>% 
   relocate(origin, destination, .before = origo)
 
-# travellers going to the most frequent destinations and from frequent origins
-travellers_filtered <- travellers %>% 
+# travelers going to the most frequent destinations and from frequent origins
+travelers_filtered <- travelers %>% 
   filter(origin %in% top_orig$province,
          destination %in% top_dest$province) %>% 
   select(id, origin, destination, X1CE:X5CE) %>% 
@@ -719,16 +844,16 @@ travellers_filtered <- travellers %>%
  
   # I would like to summarize by number of movements between provinces per century
 
-travellers_filtered
+travelers_filtered
 
 # summarize the data on birth provinces
-b_province <- travellers_filtered %>%
+b_province <- travelers_filtered %>%
   group_by(origin) %>% 
   tally() %>% 
   rename(source_int = n, source = origin)
 
 # enrich the traveler data with the summaries
-df <- travellers_filtered %>%
+df <- travelers_filtered %>%
   filter(century == "X1CE") %>% 
   rename(source = origin, target = destination, target_int = 'TRUE') %>% 
   select(source, target, target_int) %>% 
