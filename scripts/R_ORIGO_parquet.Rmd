@@ -435,7 +435,7 @@ summary(lines[lines$certainty == "certain",]$length_km) # 1746
 
 lines %>% filter(certainty == "certain")
 ```
-## Break distances down by century - histograms & timeseries
+## Timeseries: Break distances down by century
 
 
 ```{r long-lines}
@@ -517,7 +517,7 @@ lines_long %>%
     length_km < 1000 ~ "medium (200-1000km) ",
     length_km > 1000 ~ "long (1000km+)"
   )) %>% 
-  group_by(century) %>% 
+  group_by(century, triplength) %>% 
   summarize(total_distance = round(sum(length_km)),
             mean_distance = round(mean(length_km)),
             trips = n()) %>% 
@@ -538,7 +538,7 @@ lines_long %>%
   t()
 ```
 
-### Cumulative Distance by century barplot
+## Barplot: Cumulative Distance by century
 
 ```{r cum-dist-certain}
 options(scipen = 999)
@@ -559,6 +559,7 @@ lines_long %>%
   mutate(century = paste0(rep(c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE"),each = 3))) %>% 
   ggplot(aes(x = century, y = total_distance))+
    geom_col(aes(fill = triplength)) + 
+  # geom_label(aes(label= trips)) +
     scale_fill_grey()+ # B&W version
    # geom_line(y = mean_distance, aes(color = "red")) +
   # scale_y_continuous("Total distance traveled", sec.axis= sec_axis(~ ./trips, name = "Average distance")) +
@@ -612,18 +613,10 @@ ggsave("../figures/origall_distcum_centuries.png", width = 8, height = 6)
 If we add people and inscription data back to the linestrings, we can differentiate the travel by sex, status, occupation, and other social categories. 
 
 To add people into the origo points and linestrings we need to connect origo data to LIRE or EDH data hd_nr at least, but at best to id - the combination of EDH identifier and person identifier.
-Try with LIRE people
-```{r eval=FALSE}
-# Use LIRE
-head(LIRE$EDH.ID)
-LIRE <- LIRE %>% 
-  dplyr::filter(EDH.ID %in% origo$hd_nr)
-class(LIRE$people)
-LIRE$people[1:2]
-```
+Try with LIRE people or with EDH people. 
+- Currently the LIRE does not work so well.
 
-
-```{r}
+```{r EDH-people}
 # Bring in people data from EDH
 # if newest does not work, use 2021 data in rds
 # list_json <- jsonlite::fromJSON("../data/large_data/EDH_text_cleaned_2022-11-03.json")  
