@@ -1,0 +1,597 @@
+"","findspot_modern_clean","n"
+"1","Mainz",200
+"2","Kostolac, bei",169
+"3","Petronell-Carnuntum",100
+"4","Roma",99
+"5","Budapest",80
+"6","Solin",59
+"7","Adamclisi",56
+"8","Köln",50
+"9","Kistanje",39
+"10","Chester",30
+"11","Córdoba",29
+"12","Bad Deutsch-Altenburg",26
+"13","Bonn",26
+"14","Trilj",26
+"15","Alba Iulia",23
+"16","Dunaújváros",21
+"17","Svištov",21
+"18","Ljubuški",18
+"19","Komárom",16
+"20","Guljanci",15
+"21","NULL",14
+"22","Turcoaia",13
+"23","Wiesbaden",13
+"24","Celje",11
+"25","Cumpăna, bei",11
+"26","Jaén",11
+"27","Trier",11
+"28","Xanten",11
+"29","Nijmegen",10
+"30","Strasbourg",10
+"31","Antequera",9
+"32","Elche",9
+"33","Szombathely",9
+"34","Cerro del Castillón",8
+"35","Colijnsplaat",8
+"36","Frankfurt/Main",8
+"37","Lora de Estepa",8
+"38","Magdalensberg",8
+"39","Negoslavci",8
+"40","Nice",8
+"41","Sarmizegetusa",8
+"42","Skopje, Karpoš",8
+"43","Sopron",8
+"44","Worms",8
+"45","Barcelona",7
+"46","Bingen/Rhein",7
+"47","Bölcske",7
+"48","Caerleon",7
+"49","Carcabuey",7
+"50","Hajdina",7
+"51","Lincoln",7
+"52","York",7
+"53","Athínai",6
+"54","Baden-Baden",6
+"55","Bath",6
+"56","Bourbonne-les-Bains",6
+"57","Brugg",6
+"58","Écija",6
+"59","Isona",6
+"60","London",6
+"61","Neuss",6
+"62","Ptuj",6
+"63","Regensburg",6
+"64","Sremska Mitrovica",6
+"65","Tazoult-Lambèse",6
+"66","Valle de Abdalajís",6
+"67","Windisch",6
+"68","Zadar",6
+"69","Constanţa",5
+"70","Crémenes",5
+"71","Esztergom",5
+"72","Győr",5
+"73","Knin, bei",5
+"74","Maryport",5
+"75","Obernburg/Main",5
+"76","Podgorica",5
+"77","Sagunto",5
+"78","Split",5
+"79","Turcoaia, bei",5
+"80","Aquileia",4
+"81","Bourg-S.-Pierre",4
+"82","Cabra",4
+"83","Cerro del Minguillar",4
+"84","Drobeta - Turnu Severin",4
+"85","El Viso",4
+"86","Enns",4
+"87","Estepa",4
+"88","Heidelberg",4
+"89","Idanha-a-Velha",4
+"90","Kostolac",4
+"91","Lyon",4
+"92","Martos",4
+"93","Metković",4
+"94","Nikopol",4
+"95","Pljevlja",4
+"96","Roşia Montană",4
+"97","Sopište",4
+"98","Wien",4
+"99","Zlatna",4
+"100","Alcaudete",3
+"101","Augsburg",3
+"102","Bad Deutsch-Altenburg / Petronell-Carnuntum",3
+"103","Bad Zurzach",3
+"104","Beograd, Stari Grad",3
+"105","Carlisle",3
+"106","Cartagena",3
+"107","Carvoran",3
+"108","Cirencester",3
+"109","Classe",3
+"110","Cortijo del Río",3
+"111","Dimovo",3
+"112","Dunakömlőd",3
+"113","Ervenik",3
+"114","Ginsheim-Gustavsburg",3
+"115","Großkrotzenburg",3
+"116","Kaštela",3
+"117","Klis",3
+"118","Knin",3
+"119","Mehadia",3
+"120","Mérida",3
+"121","Montana (Mihajlovgrad)",3
+"122","Muć",3
+"123","Osijek",3
+"124","Plovdiv",3
+"125","Rottenburg/Neckar",3
+"126","Sisak",3
+"127","Skradin - Kistanje, zwischen",3
+"128","South Shields",3
+"129","Tarragona",3
+"130","Thessaloníki",3
+"131","Wroxeter",3
+"132",NA,3
+"133","Adony",2
+"134","Aguilar de la Frontera, bei",2
+"135","Aime en Tarentaise",2
+"136","Al Khums",2
+"137","Alsószentiván",2
+"138","Astorga",2
+"139","Atid",2
+"140","Avenches",2
+"141","Belalcázar",2
+"142","Belalcázar, bei",2
+"143","Benkovac",2
+"144","Beograd",2
+"145","Beograd, Sopot",2
+"146","Besançon",2
+"147","Biedermannsdorf",2
+"148","Bitola",2
+"149","Bologna",2
+"150","Botorrita",2
+"151","Campanario, bei",2
+"152","Capilla, bei",2
+"153","Caransebeş",2
+"154","Carrawburgh",2
+"155","Casas de Reina",2
+"156","Cauche el Viejo",2
+"157","Cerro de la Atalaya, bei",2
+"158","Cerro de los Infantes, bei",2
+"159","Červen Brjag",2
+"160","Chellah",2
+"161","Chesterholm",2
+"162","Chesters",2
+"163","Colchester",2
+"164","Concordia Sagittaria",2
+"165","Corabia",2
+"166","Dijon",2
+"167","Dilekkaya",2
+"168","Dolna Mitropolija",2
+"169","Drniš",2
+"170","Dugopolje",2
+"171","Dunabogdány",2
+"172","Ebreichsdorf",2
+"173","Erdut",2
+"174","Garlitos, bei",2
+"175","Gebenstorf",2
+"176","Haïdra",2
+"177","Hinojosa del Duque",2
+"178","Hrvace",2
+"179","Kalkar",2
+"180","Kaspičan",2
+"181","Klosterneuburg",2
+"182","Kórinthos",2
+"183","Laskó",2
+"184","Llíria / Liria",2
+"185","Magacela",2
+"186","Mainhardt",2
+"187","Maria Saal",2
+"188","Marimiguel, bei",2
+"189","Mengíbar, bei",2
+"190","Moutiers, bei",2
+"191","Old Carlisle",2
+"192","Osterburken",2
+"193","Pátrai",2
+"194","Pforzheim",2
+"195","Plumpton",2
+"196","Razgrad",2
+"197","Répcevis",2
+"198","S. Eufemia",2
+"199","S. Veit/Glan",2
+"200","Santiponce",2
+"201","Sebeş",2
+"202","Settepolesini",2
+"203","Šibenik",2
+"204","Silistra",2
+"205","Simoneşti",2
+"206","Sinj",2
+"207","Skopje, Butel",2
+"208","Smederevo",2
+"209","Stockstadt/Main",2
+"210","Székesfehérvár",2
+"211","Szentendre",2
+"212","Tárnok",2
+"213","Tata",2
+"214","Topuško",2
+"215","Torredonjimeno, bei",2
+"216","Tortosa",2
+"217","Turda",2
+"218","Valencia",2
+"219","Várdomb",2
+"220","Velika Gorica",2
+"221","Vertault",2
+"222","Veszprém",2
+"223","Villanueva de la Concepción, bei",2
+"224","Vinkovci",2
+"225","Voghenza",2
+"226","Zalamea de la Serena, bei",2
+"227","Aachen",1
+"228","Abano Terme",1
+"229","Abrud",1
+"230","Ács",1
+"231","Adamclisi, bei",1
+"232","Adamuz, bei",1
+"233","Aguilar de la Frontera",1
+"234","Aïn-Ksira",1
+"235","Al Hadr",1
+"236","Alameda",1
+"237","Albánchez",1
+"238","Alcalá de Henares",1
+"239","Alcoba",1
+"240","Alexandria",1
+"241","Alicante",1
+"242","Alomartes",1
+"243","Alzira",1
+"244","Amfípolis",1
+"245","Amsoldingen",1
+"246","Andernach",1
+"247","Anzio",1
+"248","Aquileia, bei",1
+"249","Aschaffenburg",1
+"250","Assisi",1
+"251","Augst",1
+"252","Badalona",1
+"253","Bard-le-Régulier",1
+"254","Basel",1
+"255","Beisān",1
+"256","Beja",1
+"257","Belmez",1
+"258","Benevento",1
+"259","Benicalaf",1
+"260","Benningen/Neckar",1
+"261","Beočin",1
+"262","Beograd, Grocka",1
+"263","Beograd, Mladenovac",1
+"264","Beverston",1
+"265","Bihać",1
+"266","Birdoswald, bei",1
+"267","Bjala",1
+"268","Blankenheim",1
+"269","Bobadilla, bei",1
+"270","Bobdilla, bei",1
+"271","Bolu",1
+"272","Bowes",1
+"273","Brackenheim",1
+"274","Braga",1
+"275","Bratislava",1
+"276","Brougham",1
+"277","Burgh-by-Sands",1
+"278","Bursa",1
+"279","Cabeza del Buey, bei",1
+"280","Cáceres",1
+"281","Cagliari",1
+"282","Calahorra",1
+"283","Caldes de Malavella",1
+"284","Caldes de Montbui",1
+"285","Calvatone, bei",1
+"286","Cañete la Real",1
+"287","Capilla",1
+"288","Čapljina",1
+"289","Cappuck",1
+"290","Capua",1
+"291","Carcer (Cárcel)",1
+"292","Carthage",1
+"293","Casas de Reina, bei",1
+"294","Căşeiu",1
+"295","Catterick",1
+"296","Cellole",1
+"297","Cerro de la Almanzora",1
+"298","Cerro de la Almanzora, bei",1
+"299","Cerro de las Cabezas",1
+"300","Cerro del Pascualejo",1
+"301","Cerveteri, bei",1
+"302","Chalon-sur-Saône",1
+"303","Cherchel",1
+"304","Cherchell",1
+"305","Chotín",1
+"306","Colada",1
+"307","Como",1
+"308","Constanţa, bei",1
+"309","Corbridge",1
+"310","Corcelles-les-Monts",1
+"311","Córdoba, bei",1
+"312","Cortijo de La Camila",1
+"313","Cortijo de la Torre",1
+"314","Creaca",1
+"315","Császár",1
+"316","Čučer-Sandevo",1
+"317","Čučer Sandevo",1
+"318","Dammartin-Marpain",1
+"319","Délegyháza",1
+"320","Denia",1
+"321","Densuş",1
+"322","Dicmo",1
+"323","Dion",1
+"324","Diósd",1
+"325","Dogliani",1
+"326","Dorchester",1
+"327","Dormagen",1
+"328","Doştat",1
+"329","Doxáto",1
+"330","Dozmat",1
+"331","Duisburg",1
+"332","Dunaföldvár",1
+"333","Dunavecse",1
+"334","Durrës",1
+"335","Ebchester",1
+"336","Egweil",1
+"337","Eichberg",1
+"338","El-Kantara",1
+"339","El Bañuelo",1
+"340","El Cañuelo - Fuente Alhama, zwischen",1
+"341","Empúries",1
+"342","Epfach",1
+"343","Ergolding",1
+"344","Espejo",1
+"345","Fayoum",1
+"346","Feiteira",1
+"347","Fornace Fabbri",1
+"348","Friedberg",1
+"349","Fuente de los Santos",1
+"350","Fuente de Piedra",1
+"351","Gandía",1
+"352","Găneasa",1
+"353","Garvão",1
+"354","Gattières",1
+"355","Gilena",1
+"356","Glavinica",1
+"357","Gloucester",1
+"358","Golubac, bei",1
+"359","Gorna Orjahovica",1
+"360","Granada",1
+"361","Granaione di Campagnatico",1
+"362","Großmehring",1
+"363","Gundremmingen",1
+"364","Györköny",1
+"365","Hainburg/Donau, bei",1
+"366","Hajredin",1
+"367","Halton Chesters",1
+"368","Heerlen",1
+"369","Hegykő",1
+"370","Heidenheim/Brenz",1
+"371","Hekal",1
+"372","Henchir el Faouar",1
+"373","High Rochester",1
+"374","Higuera de Calatrava, bei",1
+"375","Hinojosa del Duque, bei",1
+"376","Horitschon",1
+"377","Housesteads",1
+"378","Housesteads - Great Chesters, zwischen",1
+"379","Houten",1
+"380","Huerta de Rey",1
+"381","Iligueral Alto",1
+"382","Ilkley",1
+"383","Ilok",1
+"384","Iznalloz, bei",1
+"385","Jagsthausen",1
+"386","Jérica (Xèrica)",1
+"387","Jerusalem",1
+"388","Kalocsa",1
+"389","Kalsdorf/Graz",1
+"390","Katwijk",1
+"391","Kefalári",1
+"392","Kherba",1
+"393","Kipía",1
+"394","Kladovo",1
+"395","Klein-Winternheim",1
+"396","Kličevac",1
+"397","Koblenz",1
+"398","Konavle",1
+"399","Környe",1
+"400","Kösching",1
+"401","Kotor",1
+"402","Kovin",1
+"403","Kozloduj",1
+"404","Krivodol",1
+"405","Ksamil, bei",1
+"406","Küssaberg",1
+"407","La Guardia/Jaén",1
+"408","La Luisiana",1
+"409","La Mesa de Lora",1
+"410","La Peñuela",1
+"411","La Trinité",1
+"412","Lancaster",1
+"413","Las Cañadas",1
+"414","Lauingen/Donau",1
+"415","Le Kef",1
+"416","Lefkas",1
+"417","Leimen",1
+"418","Leutstetten",1
+"419","Liebenfels",1
+"420","Ljubuški, bei",1
+"421","Lleida",1
+"422","Los Llanos",1
+"423","Lucera",1
+"424","Mahón",1
+"425","Mainz, bei",1
+"426","Majdanpek",1
+"427","Maquiz",1
+"428","Marmara Ereğlisi",1
+"429","Mataró",1
+"430","Mattersburg",1
+"431","Miseno",1
+"432","Moers",1
+"433","Molino del Rey",1
+"434","Mompantero",1
+"435","Monte di Buja",1
+"436","Montemayor, bei",1
+"437","Monterrubio de la Serena, bei",1
+"438","Montoro",1
+"439","Moriles, bei",1
+"440","Mós do Douro",1
+"441","Moulay Idriss",1
+"442","Mudau",1
+"443","Mumrills",1
+"444","Münchenwiler",1
+"445","Murighiol",1
+"446","Nābulus, bei",1
+"447","Nassenfels",1
+"448","Neckenmarkt",1
+"449","Negotin",1
+"450","Netherby",1
+"451","Neuburg/Donau",1
+"452","Neustadt/Donau",1
+"453","Niederbronn-les-Bains",1
+"454","Niederleis",1
+"455","Niedernberg",1
+"456","Niš, Crveni Krst",1
+"457","Nistoreşti",1
+"458","Novi Sad",1
+"459","Nueva Carteya",1
+"460","Obreja",1
+"461","Obrovac",1
+"462","Offenburg",1
+"463","Oinoússa",1
+"464","Oliva",1
+"465","Ollas Casas",1
+"466","Orăştioara de Sus",1
+"467","Ostrov, bei",1
+"468","Osuna",1
+"469","Otricoli",1
+"470","Overbetuwe",1
+"471","Palominas",1
+"472","Papkeszi",1
+"473","Passau",1
+"474","Pavlikeni",1
+"475","Payerne",1
+"476","Pescara",1
+"477","Petreştii de Jos",1
+"478","Petronell-Carnuntum - Bad Deutsch-Altenburg, zwischen",1
+"479","Pförring",1
+"480","Pinos Puente",1
+"481","Pirot",1
+"482","Pomáz",1
+"483","Pompei",1
+"484","Porcuna",1
+"485","Porto Torres",1
+"486","Pöttsching, bei",1
+"487","Potzneusiedl",1
+"488","Potzneusiedl, bei",1
+"489","Požarevac",1
+"490","Priego de Córdoba",1
+"491","Priego de Córdoba - Alcalá la Real, zwischen",1
+"492","Proložac",1
+"493","Promina",1
+"494","Prosotsáni",1
+"495","Prosotsáni ()",1
+"496","Pula",1
+"497","Pusztaszabolcs",1
+"498","Rastatt",1
+"499","Râu de Mori",1
+"500","Ravenna",1
+"501","Rejanitos",1
+"502","Remagen",1
+"503","Requena",1
+"504","Ribchester",1
+"505","Riedstadt",1
+"506","Riez",1
+"507","Rimini",1
+"508","Rosinos de Vidriales",1
+"509","Rute - Lucena, zwischen",1
+"510","Ružić",1
+"511","S.-Marie-sur-Ouche",1
+"512","S. Paul/Lavanttal",1
+"513","Saelices, bei",1
+"514","Salinas de la Torre - Cortijo del Humoso, zwischen",1
+"515","Sámi",1
+"516","Sanhoane",1
+"517","Sântămăria-Orlea",1
+"518","Santanyí",1
+"519","Sarsina",1
+"520","Seggauberg",1
+"521","Şeica Mică",1
+"522","Seligenstadt",1
+"523","Senj",1
+"524","Sérrai",1
+"525","Shaḩḩāt",1
+"526","Shijon",1
+"527","Sibiu",1
+"528","Sirkovo",1
+"529","Skopje, bei",1
+"530","Skopje, Centar",1
+"531","Skopje, Gazi Baba",1
+"532","Skradin",1
+"533","Slava Cercheză",1
+"534","Sofija",1
+"535","Sofuentes",1
+"536","Solothurn",1
+"537","Šolta, Insel",1
+"538","Somogyvár",1
+"539","Sotin",1
+"540","Spello",1
+"541","Spoleto",1
+"542","Sta. Eufemia, bei",1
+"543","Sta. Olaja de la Varga",1
+"544","Stara Zagora",1
+"545","Starše",1
+"546","Studeničani",1
+"547","Sulmona, bei",1
+"548","Svištov, bei",1
+"549","Syros",1
+"550","Százhalombatta",1
+"551","Szomód",1
+"552","Tác",1
+"553","Taunusstein",1
+"554","Terrassa",1
+"555","Tibissa",1
+"556","Tínos",1
+"557","Tocina, bei",1
+"558","Topolog",1
+"559","Törökbálint",1
+"560","Torony",1
+"561","Torredonjimeno",1
+"562","Tourrette-Levens",1
+"563","Trento, bei",1
+"564","Três Minas",1
+"565","Trogir, bei",1
+"566","Turcoaia; Gârliciu, bei",1
+"567","Übach-Palenberg",1
+"568","Valbuenas",1
+"569","Valle de Abdalajìs, bei",1
+"570","Varaždinske Toplice",1
+"571","Varna",1
+"572","Veliko Târnovo",1
+"573","Vence",1
+"574","Ventimiglia",1
+"575","Veţel",1
+"576","Vila Nova de Gaia",1
+"577","Villach",1
+"578","Villagarcía de la Vega",1
+"579","Villanueva del Trabuco",1
+"580","Villards-d'Héria, aus",1
+"581","Visegrád",1
+"582","Vojnik",1
+"583","Vulci",1
+"584","Walting",1
+"585","Watercrook",1
+"586","Weiterstadt",1
+"587","Wels",1
+"588","Wörth/Main",1
+"589","Wutöschingen",1
+"590","Xanten, bei",1
+"591","Xàtiva",1
+"592","Yumurtalık",1
+"593","Žalec",1
+"594","Zambra",1
+"595","Želiezovce",1
+"596","Zevenaar",1

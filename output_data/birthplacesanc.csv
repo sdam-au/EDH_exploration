@@ -1,0 +1,682 @@
+"","pleiades_title","n"
+"1","Scupi",42
+"2","Remesiana",41
+"3","Treveri",37
+"4","Savaria",35
+"5","Ratiaria",34
+"6","Roma",32
+"7","Verona",30
+"8","Sirmio",27
+"9","Ara Ubiorum/Col. Claudia Ara Agrippinensium",26
+"10","Mediolanum",25
+"11","Salona",23
+"12","Aquileia",22
+"13","Vindobona",22
+"14","Virunum",22
+"15","Celeia",20
+"16","Batavi",19
+"17","Brixia",19
+"18","Corduba/col. Patricia",19
+"19","Cremona",19
+"20","Felsina/Bononia",19
+"21","Col. Forum Iulii",17
+"22","Lucus Augusti",17
+"23","Singili(a) Barba",15
+"24","Ancyra",13
+"25","Heraclea",13
+"26","Segestica/Siscia",13
+"27","Col. Vienna",12
+"28","Eravisci",12
+"29","Mediomatrici",12
+"30","Mursa",12
+"31","Placentia",12
+"32","Aequum",11
+"33","Africa (region)",11
+"34","Arretium",11
+"35","Bessi",11
+"36","Dacia (province)",11
+"37","Dertona",11
+"38","Florentia",11
+"39","Nicopolis",11
+"40","Pannonia",11
+"41","Taurini",11
+"42","Tolosa",11
+"43","Tyrus/Col. Septimia Severa",11
+"44","Viminacium",11
+"45","Augusta/Augustopolis/[Thebae]?",10
+"46","Germania",10
+"47","Hellas",10
+"48","Jebel Khayabir/Alexandria?/Antiochia?/Spasinou Charax?/Karkh Maisan?/[Astarabad Ardashir]?",10
+"49","Krenides/Philippi/col. Augusta Iulia Phillippensis",10
+"50","Lugdunum",10
+"51","Noricum (region)",10
+"52","Pollentia",10
+"53","Vercellae",10
+"54","Arabia (Province)",9
+"55","Ateste",9
+"56","Cemenelum",9
+"57","Emerita Augusta",9
+"58","Sequania",9
+"59","Ticinus (River)",9
+"60","Aurgi/Orongis",8
+"61","Baedro",8
+"62","Clunia",8
+"63","Dalmatia (province)",8
+"64","Italia",8
+"65","Lugdunensis (Province)",8
+"66","Nescania",8
+"67","Nicomedia",8
+"68","Oescus",8
+"69","Patavium",8
+"70","Raetia",8
+"71","Sarmizegetusa (Regia)",8
+"72","Thracia",8
+"73","Tungri",8
+"74","(H)Emesa",7
+"75","Ad Duodecimum",7
+"76","Andematunnum",7
+"77","Aventicum",7
+"78","Delmatae",7
+"79","Eporedia",7
+"80","Faventia",7
+"81","Iuvavum",7
+"82","Lauro/*Olaurum",7
+"83","Neapolis/Lepcis Magna",7
+"84","Nemeturii",7
+"85","Parma",7
+"86","Pelagonia",7
+"87","Alba",6
+"88","Anticaria",6
+"89","Ariminum",6
+"90","Astigi/Col. Augusta Firma",6
+"91","Augusta Taurinorum",6
+"92","Beirut",6
+"93","Emona",6
+"94","Hispania Citerior (Province)",6
+"95","Macedonia (Roman province)",6
+"96","Nervii",6
+"97","Obulco",6
+"98","Syria (Roman Imperial Province)",6
+"99","Tucci/Col. Augusta Gemella",6
+"100","Ulia (Fidentia)",6
+"101","Vadinienses",6
+"102","Zeugma",6
+"103","Aeso",5
+"104","Alebaece Reiorum Apollinarium/Apollinaris Reiorum/Reii",5
+"105","Aquis Querquennis",5
+"106","Baetica",5
+"107","Ber(r)oia",5
+"108","Britannia (Province)",5
+"109","Brixellum",5
+"110","Col. Narbo Martius",5
+"111","Corduba/Col. Patricia",5
+"112","Iader",5
+"113","Igabrum/Egabrum",5
+"114","Ilurco",5
+"115","Ipolcobulcola",5
+"116","Luca",5
+"117","Marsaci?",5
+"118","Mirobriga",5
+"119","Ostipo",5
+"120","Palmyra",5
+"121","Pessinous/Iustinianoupolis",5
+"122","Philadelphia",5
+"123","Ravenna",5
+"124","Saldae",5
+"125","Traiana",5
+"126","Vicetia",5
+"127","Victoriacum",5
+"128","Aquincum",4
+"129","Ara Ubiorum/ Col. Claudia Ara  Agrippinensium",4
+"130","Ascua/Osqua",4
+"131","Beneventum/Maleventum",4
+"132","Bodiontici",4
+"133","Bracara Augusta",4
+"134","Breuci",4
+"135","Carnuntum",4
+"136","Carthaginiensis",4
+"137","Col. Caesaraugusta",4
+"138","Comum",4
+"139","Dardania",4
+"140","Ephesus/Arsinoe(ia)",4
+"141","Galliae",4
+"142","H(Aedui)",4
+"143","Hierapolis",4
+"144","Kyrros",4
+"145","Luceria/Noukeria (Apoulon)",4
+"146","Mutina",4
+"147","Nemausus",4
+"148","Nertobriga",4
+"149","Pautalia",4
+"150","Pisaurum",4
+"151","Regium Lepidum",4
+"152","Stobi",4
+"153","Theline/ Col. Arelate/Constantina",4
+"154","Thessalonica",4
+"155","Tios/Tieion",4
+"156","Turduli Veteres",4
+"157","Ubii",4
+"158","Valentia",4
+"159","Veleia",4
+"160","Ventipo",4
+"161","Volubilis",4
+"162","(H)Aedui",3
+"163","(S)Ucia",3
+"164","Acelum",3
+"165","Alba Pompeia",3
+"166","Amaseia",3
+"167","Amastris/Sesamos",3
+"168","Ambiani",3
+"169","Andautonia",3
+"170","Antiochia/Theupolis",3
+"171","Armenia (Roman province)",3
+"172","Arsen (River)",3
+"173","Asido",3
+"174","Augusta Vindelicum/Aelia Augusta",3
+"175","Batavodurum/(Ulpia) Noviomagus",3
+"176","Bithynia",3
+"177","Calagurris (Nassica) Iulia",3
+"178","Camunni",3
+"179","Capua",3
+"180","Cirta/Constantina",3
+"181","Conana/Iustinianopolis?",3
+"182","Corinthus/Korinthos",3
+"183","Damascus",3
+"184","Doclea",3
+"185","Doliche",3
+"186","Dumnonii",3
+"187","Edessa/Antiochia ad Callirhoem",3
+"188","Firmum Picenum",3
+"189","Germania Superior (Province)",3
+"190","Hatria (Picenum)",3
+"191","Icosium",3
+"192","Ipagrum/Epagrum",3
+"193","Iponuba/Hippo Nova",3
+"194","Iudaea (region)",3
+"195","Laranda",3
+"196","Lingones",3
+"197","Lopodunum",3
+"198","Mantua",3
+"199","Mellaria",3
+"200","Montans",3
+"201","Neapolis",3
+"202","Nicaea",3
+"203","Noviomagus/Nemetae",3
+"204","Octodurus/Forum Claudii Vallensium",3
+"205","Olisipo",3
+"206","Opitergium",3
+"207","Palma",3
+"208","Pannonia Superior (Province)",3
+"209","Perinthus/Heraclea",3
+"210","Philippopolis/Trimontium",3
+"211","Poetovio",3
+"212","Puteolanus Sinus/Crater",3
+"213","Reginum/Castra Regina",3
+"214","Remi",3
+"215","Rhizon/Risinium",3
+"216","Salinae",3
+"217","Segontia",3
+"218","Tapori",3
+"219","Tarraconensis",3
+"220","Teanum Sidicinum",3
+"221","Tergeste",3
+"222","Triboci",3
+"223","Trident(i)um",3
+"224","Urci?",3
+"225","Uxama (Argaela)",3
+"226","(H)Eraclia",2
+"227","Abonouteichos/Ionopolis",2
+"228","Aegyptus (Roman imperial province)",2
+"229","Aenona",2
+"230","Aequiculi",2
+"231","Allava",2
+"232","Ampelos",2
+"233","Anderitum",2
+"234","Ansium",2
+"235","Antiochia/Theoupolis",2
+"236","Apamea",2
+"237","Apta Iulia",2
+"238","Aratispi",2
+"239","Arausa",2
+"240","Areth(o)usa",2
+"241","Asia",2
+"242","Augusta Bagiennorum",2
+"243","Aurelium Cananefatium/Forum Hadriani",2
+"244","Bassiana",2
+"245","Bellovaci",2
+"246","Boi(i)",2
+"247","Brigantes",2
+"248","Calagurris *Fibularia",2
+"249","Campania",2
+"250","Camulodonum",2
+"251","Cappadox? (river)",2
+"252","Celtianis",2
+"253","Cibalae",2
+"254","Cilicia",2
+"255","Col. Augusta Raurica",2
+"256","Col. Augusta Treveorum",2
+"257","Col. Barcino",2
+"258","Col. Dea Vocontiorum",2
+"259","Concordia?",2
+"260","Dalmatia (Province)",2
+"261","Deva",2
+"262","Dinia",2
+"263","Edetania (Region)",2
+"264","Elusa",2
+"265","Equizeto?",2
+"266","Faesulae",2
+"267","Falerio",2
+"268","Fanum Fortunae",2
+"269","Forum Cornelii",2
+"270","Forum Vibii",2
+"271","Frisiavones",2
+"272","Fundi",2
+"273","Galata",2
+"274","Glanate",2
+"275","Hasta",2
+"276","Helikore/Nicaea",2
+"277","Hispellum",2
+"278","Horeum Margi",2
+"279","Iconium/Claudiconium",2
+"280","Ierusalem/Hierosolyma/Col. Aeilia Capitolina",2
+"281","Iguvium",2
+"282","Iliberri",2
+"283","Iliturgi",2
+"284","Iporca",2
+"285","Laus Pompeia",2
+"286","Les(s)os",2
+"287","Levami",2
+"288","Liburnia (Region)",2
+"289","Luna",2
+"290","Lupia(e)",2
+"291","Lusitani",2
+"292","Mauretania",2
+"293","Mazaka/Eusebeia/Caesarea",2
+"294","Miletus",2
+"295","Milyadeis",2
+"296","Moge(n)tiana",2
+"297","Narbonensis (region)",2
+"298","Norba",2
+"299","Novaria",2
+"300","Ostia",2
+"301","Otobesa/Etobesa",2
+"302","Pontica",2
+"303","Praeneste",2
+"304","Ruteni",2
+"305","Saguntia",2
+"306","Samosata",2
+"307","Serdica",2
+"308","Sicca Veneria",2
+"309","Singidunum",2
+"310","Sinope",2
+"311","Smyrna/Eurydikeia",2
+"312","Sopianae",2
+"313","Suebi",2
+"314","Sumolecenna",2
+"315","Taouion/Tabia",2
+"316","Thaenae",2
+"317","Theveste",2
+"318","Thyateira",2
+"319","Traian",2
+"320","Tribus Sergia",2
+"321","Troas (Region)",2
+"322","Varvaria",2
+"323","Vasio",2
+"324","Veliocasses",2
+"325","Virumandui",2
+"326","Volsinii",2
+"327","(H)Atria",1
+"328","(I)Tucci",1
+"329","(Khuvar)/Choara/Apameia (Rhagiane)?",1
+"330","*Ganuenta?",1
+"331","*Sosontigi",1
+"332","Ad Lucos",1
+"333","Ad Portum/Gadiatanus Portus",1
+"334","Addua (River)",1
+"335","Aelia?",1
+"336","Aequum Tuticum//Equus Tuticus",1
+"337","Aguntum",1
+"338","Aiungi",1
+"339","Akesinos/Sandabal (River)",1
+"340","Alaba",1
+"341","Alb(i)um Intimilium/Albintimilium",1
+"342","Albanopolis",1
+"343","Album Ingaunum/Albingaunum",1
+"344","Aloros",1
+"345","Altinum",1
+"346","Amblada",1
+"347","Ammaedara",1
+"348","Amphipolis",1
+"349","Anaunion",1
+"350","Anazarbos/Caesarea/Ioustin(ian)oupolis",1
+"351","Anchialus",1
+"352","Ancon(a)",1
+"353","Ankyra",1
+"354","Anthedon/Agrippias",1
+"355","Antigoneia/(Col. Augusta) Alexandiria Troas",1
+"356","Antipolis",1
+"357","Aquae",1
+"358","Aquae Calidae",1
+"359","Aquae Flaviae",1
+"360","Aquae Statiellae",1
+"361","Archelais",1
+"362","Arcobriga",1
+"363","Arduenna Silva",1
+"364","Argos Hippium/Arpi/Argyripa",1
+"365","Arna",1
+"366","Arsia (River)",1
+"367","Artace",1
+"368","Artigi",1
+"369","Ashqelon/Ascalon",1
+"370","Aspendos/Primoupolis",1
+"371","Astures Transmontani",1
+"372","Astypalaia",1
+"373","Ategua",1
+"374","Athenae",1
+"375","Atina",1
+"376","Augusta Praetoria",1
+"377","Augustus Vindelicum/Aelia Augustus",1
+"378","Auso",1
+"379","Autricum",1
+"380","Avaricum/Biturigae",1
+"381","Aveia",1
+"382","Avennio",1
+"383","Axati",1
+"384","Axiopolis",1
+"385","B(a)elo",1
+"386","Balicaricum Mare",1
+"387","Bantia",1
+"388","Baracum?",1
+"389","Barata",1
+"390","Batanaia",1
+"391","Belalis Maior",1
+"392","Belgica",1
+"393","Bellunum",1
+"394","Bertha",1
+"395","Beta Samati",1
+"396","Boas/Harpasos(River)",1
+"397","Burgundiones",1
+"398","Byllis",1
+"399","Cabellio",1
+"400","Caere",1
+"401","Cairano",1
+"402","Caladunum",1
+"403","Calanna",1
+"404","Calecula/Callicula",1
+"405","Cales",1
+"406","Campanus Ager",1
+"407","Canatha/*Gabinia/*Septimia",1
+"408","Cantiaci",1
+"409","Capersana",1
+"410","Cappadocia (region)",1
+"411","Carasa",1
+"412","Carcas(s)co/ Col. Iulia",1
+"413","Caris(s)a",1
+"414","Carrhae",1
+"415","Carruca",1
+"416","Carsulae",1
+"417","Carteia/Calpe/Karpessos",1
+"418","Carula",1
+"419","Catualium",1
+"420","Caturicis",1
+"421","Caum",1
+"422","Cetium",1
+"423","Chalcidice",1
+"424","Chalcis",1
+"425","Cibyra",1
+"426","Cillium",1
+"427","Cirpi",1
+"428","Cirro",1
+"429","Cisimbrium",1
+"430","Cius",1
+"431","Classis",1
+"432","Clusium",1
+"433","Coele Syria",1
+"434","Col. Lindum",1
+"435","Complutum",1
+"436","Conobaria/Colobana",1
+"437","Consabura/Consabrum",1
+"438","Convenae",1
+"439","Corneli",1
+"440","Cornovii",1
+"441","Corsica/Kyrnos (Island)",1
+"442","Costoboci",1
+"443","Creta (Island)",1
+"444","Crustumerium",1
+"445","Cugerni",1
+"446","Cumae/Kyme (Campanian)",1
+"447","Curicum",1
+"448","Curunniacis",1
+"449","Daesitiates",1
+"450","Dalmatia",1
+"451","Dara/Dareuim",1
+"452","Dardania (Province)",1
+"453","Deciates",1
+"454","Deris",1
+"455","Dianium/Hemeroskopeion",1
+"456","Dierna",1
+"457","Ditiones",1
+"458","Doberos",1
+"459","Durocotorum",1
+"460","Eburacum",1
+"461","Eburodunum",1
+"462","Ecbatana/Hagmatana/Achmeta/Epiphaneia/Ahmadan",1
+"463","Edeba",1
+"464","Edeta/Leiria",1
+"465","Elaiatis",1
+"466","Emporiae",1
+"467","Ephesos/Arsinoe(ia)",1
+"468","Ephesus//Arsinoe(ia)",1
+"469","Equilum",1
+"470","Euporia",1
+"471","Feltria",1
+"472","Ferentium",1
+"473","Flanona",1
+"474","Flavia Solva",1
+"475","Focunates",1
+"476","Formiae",1
+"477","Forum Augusti",1
+"478","Forum Cananefatium/Forum Hadriani",1
+"479","Forum Fulvii Valentium",1
+"480","Forum Segusiavorum",1
+"481","Frentrani",1
+"482","Frisii",1
+"483","Galatia",1
+"484","Gallia",1
+"485","Gangra",1
+"486","Gazaion Limen/Constantia/Neapolis",1
+"487","Genua",1
+"488","Gerasa/Antiochia ad Chrysorhoam",1
+"489","Germanicum",1
+"490","Getae",1
+"491","Gillium",1
+"492","Guium?",1
+"493","Hadrumentum/Iustinianopolis",1
+"494","Hierapolis ",1
+"495","Hierapytna",1
+"496","Hippo Regius",1
+"497","Hipponion/Vibo Valentia",1
+"498","Histonium",1
+"499","Iamo/Iamna",1
+"500","Ierusalem/Hierosolyma/Col. Aelia Capitolina",1
+"501","Igilgili",1
+"502","Iliturgicola",1
+"503","Ilu(m)beris",1
+"504","Industria/Bodincomagum?",1
+"505","Ipsca",1
+"506","Isaura (Nova)/Leontopolis",1
+"507","Isauria",1
+"508","Isinda",1
+"509","Ismaris L. ",1
+"510","It(o)uris(s)a/Turissa",1
+"511","Jaén",1
+"512","Karia (Late Roman Province)",1
+"513","Katane/Catina",1
+"514","Katane/Catine",1
+"515","Kikonion",1
+"516","Kition",1
+"517","Klabene",1
+"518","Lacippo",1
+"519","Lambaesis",1
+"520","Lancia/Lance",1
+"521","Laodicea ad Libanum",1
+"522","Laodicea ad Lycum/Diospolis/Roas",1
+"523","Lapidaria?",1
+"524","Lappa",1
+"525","Latium (region)",1
+"526","Laud (River)",1
+"527","Leuci",1
+"528","Lexovii",1
+"529","Libarna",1
+"530","Libya",1
+"531","Lixus",1
+"532","Lucentum",1
+"533","Lycaonia",1
+"534","Lydia/Maionia (Region)",1
+"535","Maezaei",1
+"536","Malaca",1
+"537","Malus",1
+"538","Margi di Giarratana",1
+"539","Maurusii",1
+"540","Mazaka",1
+"541","Melite",1
+"542","Mentesa",1
+"543","Menthymna",1
+"544","Mevaniola",1
+"545","Misenum",1
+"546","Mopsion",1
+"547","Municipium Aurelium Commodianum/Thibiuca?",1
+"548","Mylasa",1
+"549","Namnasa (River)",1
+"550","Napoca",1
+"551","Nestos/Hippius (River)",1
+"552","Nicopolis ad Nestum/Ulpia Nicopoliis",1
+"553","Nicopolis ad Nestum/Ulpia Nicopolis",1
+"554","Ninica/Col. Iulia Augusta Felix/Claudiopolis",1
+"555","Nitiobroges/Nitiobriges",1
+"556","Noiodounon Diablintum",1
+"557","Nomentum",1
+"558","Novaesium",1
+"559","Numidia (region)",1
+"560","Onuba",1
+"561","Oretania/Oretani",1
+"562","Osroene",1
+"563","Ossigi",1
+"564","Ovilava",1
+"565","Palaestina II (Late Roman Province)",1
+"566","Panapio/Punicum",1
+"567","Pannoniae",1
+"568","Paraetonium/Ammonia",1
+"569","Pergamos?",1
+"570","Pergamum",1
+"571","Perusia",1
+"572","Phrygia",1
+"573","Picenum (Region)",1
+"574","Pictones",1
+"575","Pisa ",1
+"576","Pistoriae",1
+"577","Plati",1
+"578","Pompeiacum/Vernemetis",1
+"579","Pompeii",1
+"580","Pompeiopolis/Sebaste",1
+"581","Porolissum",1
+"582","Prusa",1
+"583","Rachle/Zenopolis",1
+"584","Ramista",1
+"585","Rema",1
+"586","Rhodos (Island)",1
+"587","Romula/Malva",1
+"588","Rouskinon/Tetus (River)",1
+"589","Runicates",1
+"590","Sabini",1
+"591","Sabora",1
+"592","Saetabis",1
+"593","Sagalassos",1
+"594","Sala",1
+"595","Salaria?",1
+"596","Saletio",1
+"597","Salluntum",1
+"598","Salvia",1
+"599","Salvium",1
+"600","Samaria (Region)",1
+"601","Samos",1
+"602","Sardinia (island)",1
+"603","Sardis/Hyde",1
+"604","Savia",1
+"605","Scandinavia/Scandza",1
+"606","Scardona",1
+"607","Scarponna",1
+"608","Scordiscus (mountain)",1
+"609","Scythopolis/Nysa",1
+"610","Sebastopolis/Herakleopolis/Karana?",1
+"611","Segeste Tigulliorum",1
+"612","Segobriga",1
+"613","Segontium",1
+"614","Segovia",1
+"615","Segusio?",1
+"616","Senones",1
+"617","Sentii",1
+"618","Sentinum",1
+"619","Septempeda",1
+"620","Sequana (river)",1
+"621","Seriane?",1
+"622","Sexi/Saxetanum",1
+"623","Sidon/Col. Aurelia Pia",1
+"624","Singilis (River)",1
+"625","Siparis",1
+"626","Sirmium",1
+"627","Smintheion",1
+"628","Solia",1
+"629","Solva",1
+"630","Staryy Krym",1
+"631","Statieli",1
+"632","Statielli",1
+"633","Stratonos Pyrgos /Caesarea",1
+"634","Suessatium",1
+"635","Sufes",1
+"636","Sufetula",1
+"637","Sulmo",1
+"638","Sunuci",1
+"639","Synaos",1
+"640","Syria",1
+"641","Tanda",1
+"642","Tarvisium",1
+"643","Termes",1
+"644","Tert",1
+"645","Teurnia",1
+"646","Thisbe",1
+"647","Tiberiopoulis?",1
+"648","Ticinum",1
+"649","Tipasa",1
+"650","Tomis",1
+"651","Torreparedones",1
+"652","Tractus Umbriae",1
+"653","Traianoupolis",1
+"654","Tralleis (In Lydia)",1
+"655","Trerus/Tolerus (River)",1
+"656","Tricorn(i)enses",1
+"657","Trinobantes",1
+"658","Tripolis",1
+"659","Trump(i)lini",1
+"660","Tullum",1
+"661","Tusca (River)",1
+"662","Tyana/Col. Aurelia Antoniniana",1
+"663","Uccula",1
+"664","Ucubi/Col. Claritas Iulia",1
+"665","Ulpia Traiana Sarmizegetusa",1
+"666","Ulpiana",1
+"667","Urvinum Mataurense",1
+"668","Utus",1
+"669","Uzita",1
+"670","Vangiones",1
+"671","Varciani",1
+"672","Vardagate",1
+"673","Vatl/Vetulonia",1
+"674","Veii",1
+"675","Venafrum",1
+"676","Vernas",1
+"677","Verulae",1
+"678","Vesunna",1
+"679","Viennensis (late Roman province)",1
+"680","Vorovum Minor",1
+"681","Zoelae",1

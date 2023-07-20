@@ -24,7 +24,18 @@ library(mapview)
 ## Get province, origo and LIRE data
 
 *What are all these datasets? Explanation is needed!*
+We need the following inputs for the analysis: 
+
+*origo dataset that contains both origo and findspot converted into numeric coordinates
+*LIST with inscription data containing findspot name
+*Roman province boundaries for visualisation
+
 ```{r data}
+
+# Origo parquet of linestrings is drawn from the pleiades point geocoded on the basis of origo by Mathias and Vojtech travelling towards EDH_point generated from findspot, produced by EDH editors.
+origo <- st_read_parquet("../data/origo_geo.parquet")
+colnames(origo)
+
 # Pleiades provinces data have overlapping variants without description
 romanEmpire <- read_sf("../data/pleiades_regions.geojson") # not great as they collate all province changes over time without identities
 
@@ -38,10 +49,18 @@ st_is_valid(provinceEDH)
 
 # LIRE from https://zenodo.org/record/7966484
 #LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
+LIST <- st_read_parquet("../data/large_data/LIST_v0-5.parquet")
+colnames(LIST)
 
+# Grab inscriptions that contain origo
+LISTfindspot <- LIST %>% 
+  filter(EDH.ID %in% origo$hd_nr) %>% 
+  #filter(geometry %in% origo$edh_point)
+  select(matches("EDH.ID|LIST|findspot|Lat|Long|^status")) %>% 
+  select(-matches("certainty")) %>% 
+  relocate(c(status,status_notation), .after = Latitude)
 
-# Origo parquet of linestrings is drawn from the pleiades point geocoded on the basis of origo by Mathias and Vojtech travelling towards EDH_point generated from findspot, produced by EDH editors.
-origo <- st_read_parquet("../data/origo_geo.parquet")
+LISTfindspot
 
 # paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet")
 ```
@@ -103,11 +122,11 @@ origo %>%
 ```
 
 ## Death locations
-Death locations are represented by findspot in edh_point attribute.
+Death locations are represented by findspot in edh_point attribute. BUT WE ARE MISSING FIND SPOT NAMES in origo, so must grab them from LISTfindspot !! See spatial streamlining below
 ```{r}
 colnames(origo)
 
-# Unique death locations THIS IS HIGH
+# Unique death locations
 nrow(origo) - length(which(duplicated(origo$edh_point)))
 
 # only 484 unique destinations for all the travelers
@@ -115,12 +134,18 @@ nrow(origo) - length(which(duplicated(origo$edh_point)))
 
 ## Spatial Data Streamlining
 Create two point simple features using the point columns in origo. Call origin birthplace coordinates and deathplace deathplace
-```{r}
+```{r spatialize death-and-birthplaces}
+
 names(origo) # edh point is the active geometry
+
 deathplace <- origo %>%
   st_as_sf() %>% 
   st_set_crs(4326) %>% #mapview(zcol = "certainty")
-  st_transform(3035)
+  #st_join(LISTfindspot) %>% 
+  st_transform(3035) %>% 
+  # add findspot names to the spatial coordinates in deathplace
+  full_join(st_drop_geometry(LISTfindspot), by = c("hd_nr"="EDH.ID")) 
+
 birthplace <- origo %>%  # switching active geometry to ori
   st_drop_geometry() %>% 
   st_as_sf(coords = c("pleiades_Longitude","pleiades_Latitude"), crs = 4326)  %>% 
@@ -144,7 +169,7 @@ st_is_valid(provinceEDH)
 ### Province centroids
 province_centroid <- st_centroid(provinceEDH)
 ```
-## Make visuals
+## Visuals of stats
 
 ```{r parquet-leaflet}
 
@@ -171,8 +196,10 @@ birthplace %>%
   mutate(pctGeocodingCertainty = round(n/2277 *100,1))
 ```
 
-## Prepare for time-series
+## Time-series
 In order to create a facetted view of change over time, we need the century values (present/absent) to be in a single column, and not spread over several columns. Therefore we shall pivot the dataset from wide to longer and compress the individual century columns with T/F values into a single 'century' column with a row for every century the inscription was in existence.
+
+### Time-series preparation : lengthening of datasets
 ```{r pivot-long}
 # See the ~X1BCE fields in the dataset which indicate presence/absence in a given century
 names(origo)
@@ -200,6 +227,68 @@ birthplace_long <- birthplace %>%
 
 ```
 
+### Death- and birth-place maps by magnitude through time
+
+using findspot_ancient_clean and pleiades_title for death and birthplace respectively
+```{r deathplace-map-time}
+# add back findspot_ancient_clean  from LISTfindspot
+
+deathplace_cntime <- deathplace_long %>% 
+  select(findspot_ancient_clean, findspot_modern_clean, century) %>% 
+  #filter(Certainty == "certain") %>% 
+  group_by(century) %>% 
+  count(findspot_ancient_clean) %>% 
+  mutate(count_log = log10(n))
+
+
+deathtime_map <- tm_shape(deathplace_cntime) +
+  tm_facets(by = "century",
+           ncol=2, nrow = 3
+            )+
+  tm_dots(size = "n")+
+  tm_shape(provinceEDH$geometry)+
+  tm_borders(alpha = 0.7)+
+  tm_layout(main.title = "Deathplaces through centuries",
+             legend.outside = F)
+  
+deathtime_map
+
+tmap_save(deathtime_map, "../figures/deathplacemap.png", width = 15, height = 21, units = "cm")
+
+#tmap_save(deathtime_map, "../figures/deathplacemap.html")
+ 
+```
+
+```{r birthplace-map-time}
+# work with pleiades title in birthplace data
+
+birthplace_cntime <- birthplace_long %>% 
+  select(pleiades_title, Certainty, century) %>% 
+  filter(Certainty == "certain") %>% 
+  group_by(century) %>% 
+  count(pleiades_title) %>% 
+  mutate(count = log10(n))
+
+
+birthtime_map <- tm_shape(birthplace_cntime) +
+  tm_facets(by = "century",
+           ncol=2, nrow = 3
+            )+
+  tm_dots(size = "n")+
+  tm_shape(provinceEDH$geometry)+
+  tm_borders(alpha = 0.7)+
+  tm_layout(main.title = "Birthplaces through centuries", 
+            legend.outside = F)
+  
+birthtime_map
+
+tmap_save(birthtime_map, "../figures/birthplacemap.png", width = 15, height = 21, units = "cm")
+
+#tmap_save(birthtime_map, "../figures/birthplacemap.html")
+
+  
+
+```
 
 ```{r origo-mapview-certainty}
 
@@ -280,11 +369,25 @@ knitr::kable(total_travelers, col.names = c("Century","1BCE", "1CE", "2CE", "3CE
 
 
 
-## Birth and death province statistics
+## Birth and death province and place statistics
 Let's create some summaries of most frequent birth and death places
 ```{r b-d-summaries}
 ## Deathplace and Birthplace stats
-death_sum <- deathplace %>% 
+deathplace_anc_smr <- deathplace %>% 
+  st_drop_geometry() %>% 
+  select(findspot_ancient_clean) %>% 
+  group_by(findspot_ancient_clean) %>% 
+  tally() %>% 
+  arrange(desc(n))
+
+deathplace_mod_smr <- deathplace %>% 
+  st_drop_geometry() %>% 
+  select(findspot_modern_clean) %>% 
+  group_by(findspot_modern_clean) %>% 
+  tally() %>% 
+  arrange(desc(n))
+
+death_smr <- deathplace %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE) %>% 
   st_drop_geometry() %>% 
   select(province) %>% 
@@ -293,17 +396,33 @@ death_sum <- deathplace %>%
   arrange(desc(n))
 
 ## Birthplace stats
-birth_sum <- birthplace %>%
+birth_smr <- birthplace %>%
   st_join(provinceEDH, join = st_intersects, left = TRUE) %>% 
   st_drop_geometry() %>% 
   select( province) %>% 
   group_by(province) %>% 
   tally() %>% 
   arrange(desc(n))
+
+birth_anc_smr <- birthplace %>%
+  st_drop_geometry() %>% 
+  select(pleiades_title) %>% 
+  group_by(pleiades_title) %>% 
+  tally() %>% 
+  arrange(desc(n))
+
+birth_smr
+death_smr
+
+#write.csv(birth_smr, "../output_data/birthprovinces.csv")
+#write.csv(death_smr, "../output_data/deathprovinces.csv")
+#write.csv(birth_anc_smr, "../output_data/birthplacesanc.csv")
+#write.csv(deathplace_anc_smr, "../output_data/deathplacesanc.csv")
+#write.csv(deathplace_mod_smr, "../output_data/deathplacesmod.csv")
 ```
 
-## Birth and death provinces' names in origo
-Here we attach birth and death province names to the origo data and generate summaries of province flow.
+## Birth and death provinces' names in origo and province centroid
+Here we attach birth and death province summaries to the origo data and generate summaries of province flow per province centroid.
 ```{r b-d-prov-origo}
 birthplace_prov <- birthplace %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE)
@@ -313,9 +432,9 @@ deathplace_prov <- deathplace %>%
 
 
 province_flow_centroid <- province_centroid %>% 
-  left_join(birth_sum, by = "province") %>% 
+  left_join(birth_smr, by = "province") %>% 
   rename(birth_prov = n) %>% 
-  left_join(death_sum, by = "province") %>% 
+  left_join(death_smr, by = "province") %>% 
   rename(death_prov = n) 
 
 province_centroid
@@ -435,7 +554,7 @@ summary(lines[lines$certainty == "certain",]$length_km) # 1746
 
 lines %>% filter(certainty == "certain")
 ```
-## Timeseries: Break distances down by century
+## Distances in a Timeseries: Break distances down by century
 
 
 ```{r long-lines}
@@ -806,13 +925,14 @@ https://www.kaggle.com/code/paulc91/visualise-flows-with-r-d3/report  # the best
 top_orig <- birthplace_prov %>%
   st_drop_geometry() %>% 
   group_by(province) %>% 
-  tally() %>% 
+  tally() %>% arrange(desc(n))
+  #arrange(desc()) %>% 
   top_n(20, n)
 
 top_dest <- deathplace_prov%>%
   st_drop_geometry() %>% 
   group_by(province) %>% 
-  tally() %>% 
+  tally() %>% arrange(desc(n))
   top_n(20, n)
 
 travelers <- birthplace_prov %>% 
@@ -874,28 +994,4 @@ ggplot(df, aes(x = source,
   geom_sankey()
 
 ```
-
-
-### GGplot density map 
-DOES NOT WORK
-Needs - to be cleaned up to white background and contours and provinces in the back
-
-```{r eval=FALSE}
-ggplot() +
-  stat_density_2d(data = birthplace_long,
-                  mapping = aes(x = purrr::map_dbl(birthplace, ~.[1]),
-                                y = purrr::map_dbl(birthplace, ~.[2]),
-                                fill = stat(density)),
-                  geom = "tile",
-                  contour = F,
-                  alpha = 0.5)+
-  facet_wrap(~ century, ncol = 2)
-ggplot()+
- # geom_sf(data = provinceEDH, fill = NA)+
-  geom_sf(data = origo_long, aes(color = cert)) +
-  #scale_fill_viridis_c(option = "magma") +
-  theme_bw()
-
-```
-
 
