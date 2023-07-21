@@ -6,9 +6,7 @@ output: html_document
 ---
 
 Visualizing origo dataset:
-This script containes facetted maps of origin and destination of the people in EDH inscriptions (92,000 > 3000 placenames> 2277 successfully geocoded ones).
-It needs a breakdown by province (DONE) with Sankey diagram mapping from to to by province, to explore flow by time.
-
+This script contains faceted maps of origin and destination of the people in EDH inscriptions (92,000 > 3000 placenames> 2277 successfully geocoded ones).
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -21,7 +19,7 @@ library(sfarrow)
 library(mapview)
 ```
 
-## Get province, origo and LIRE data
+## Get province, origo and LIST data
 
 *What are all these datasets? Explanation is needed!*
 We need the following inputs for the analysis: 
@@ -64,6 +62,7 @@ LISTfindspot
 
 # paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet")
 ```
+
 
 ## Birth locations geocoded in the *origo* column
 
@@ -137,7 +136,7 @@ Create two point simple features using the point columns in origo. Call origin b
 ```{r spatialize death-and-birthplaces}
 
 names(origo) # edh point is the active geometry
-
+names(origo)[14:19] <- c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE")
 deathplace <- origo %>%
   st_as_sf() %>% 
   st_set_crs(4326) %>% #mapview(zcol = "certainty")
@@ -158,6 +157,9 @@ deathplace$geometry # is NULL
 deathplace$edh_point # contains data
 ```
 
+
+
+
 ### Check province and origo alignment: projection and validity
 ```{r}
 # edh province polygons need clean up - NOT FINISHED
@@ -169,7 +171,7 @@ st_is_valid(provinceEDH)
 ### Province centroids
 province_centroid <- st_centroid(provinceEDH)
 ```
-## Visuals of stats
+## Visuals of birthplace certainty
 
 ```{r parquet-leaflet}
 
@@ -194,6 +196,17 @@ birthplace %>%
   group_by(certainty) %>%
   tally() %>% 
   mutate(pctGeocodingCertainty = round(n/2277 *100,1))
+```
+
+
+```{r origo-mapview-certainty}
+
+# Plot the results in mapview so as to see the distribution of certainties in space  
+
+
+library(mapview) 
+
+mapview(birthplace, zcol = "certainty")
 ```
 
 ## Time-series
@@ -227,7 +240,7 @@ birthplace_long <- birthplace %>%
 
 ```
 
-### Death- and birth-place maps by magnitude through time
+### Death- and birth-place maps by magnitude of persons leaving/arriving through time
 
 using findspot_ancient_clean and pleiades_title for death and birthplace respectively
 ```{r deathplace-map-time}
@@ -290,15 +303,6 @@ tmap_save(birthtime_map, "../figures/birthplacemap.png", width = 15, height = 21
 
 ```
 
-```{r origo-mapview-certainty}
-
-# Plot the results in mapview so as to see the distribution of certainties in space  
-
-
-library(mapview) 
-
-mapview(birthplace, zcol = "certainty")
-```
 
 
 ### Time-series on origin / birth place
@@ -345,9 +349,9 @@ tm_shape(deathplace_long) +
             legend.outside = TRUE)
 ```
 
-## Diachronic stats
+## Total travellers across centuries
 
-```{r}
+```{r travelrs-kable}
 colnames(deathplace)
 library(janitor)
 
@@ -507,18 +511,27 @@ tmap_arrange(b_prov,d_prov, ncol = 2)
 
 ```{r Vojtech-lines}
 # Create linestrings sf from Vojtech's columns
+
 lines <- origo$origo_line %>% 
   st_sf() %>% 
   st_set_crs(4326)
   # works just fine
 colnames(origo)
-# Connect the linestrings back with data
-lines <- cbind(lines, origo[,c(1:9,11:19,24)] %>% st_drop_geometry())
+
+# Connect the linestrings back with birthplace and deathplace data from origo and LISTfindspot 
+b_prov <- birthplace_prov[c("hd_nr", "province")] %>% st_drop_geometry()
+d_prov <- deathplace_prov[c("hd_nr", "province")] %>% st_drop_geometry()
+write.csv(b_prov[duplicated(b_prov$hd_nr),], "../output_data/checkbprovforduplicates.csv")
+write.csv(d_prov[duplicated(d_prov$hd_nr),], "../output_data/checkdprovforduplicates.csv")
+
+
+lines <- cbind(lines, origo[,c(1:9,11:19,24)] %>% st_drop_geometry()) %>% 
+  full_join(st_drop_geometry(LISTfindspot), by = c("hd_nr"="EDH.ID")) 
 
 # Quick check
 mapview(lines, zcol = "certainty")
 
-# Calculate geodetic distance because continet scale
+# Calculate geodetic distance because continent scale
 lines$length_m <- st_length(lines)  # geodetic distance
 
 # Get rid of units and create kms
@@ -912,86 +925,105 @@ ggsave("../figures/Status_origo.png", width = 8, height = 6)
 
 
 
-## Sankey COPIED BUT NOt working YET - ELABORATE!
-https://stackoverflow.com/questions/63255589/create-a-sankey-diagram-with-tidy-data-in-r
+## Oddities and deeper explorations
+```{r duplicate-prov-records}
 
-https://r-charts.com/flow/sankey-diagram-ggplot2/
-
-https://www.kaggle.com/code/paulc91/visualise-flows-with-r-d3/report  # the best resource is here
-
-```{r eval=FALSE}
-# Sankey network data preparation
-
-top_orig <- birthplace_prov %>%
-  st_drop_geometry() %>% 
-  group_by(province) %>% 
-  tally() %>% arrange(desc(n))
-  #arrange(desc()) %>% 
-  top_n(20, n)
-
-top_dest <- deathplace_prov%>%
-  st_drop_geometry() %>% 
-  group_by(province) %>% 
-  tally() %>% arrange(desc(n))
-  top_n(20, n)
-
-travelers <- birthplace_prov %>% 
-  st_drop_geometry() %>% 
-  rename(origin=province) %>% 
-  left_join(st_drop_geometry(deathplace_prov)[c(1:2,5,22)], by = "id") %>% 
-  rename(destination = province) %>% 
-  relocate(origin, destination, .before = origo)
-
-# travelers going to the most frequent destinations and from frequent origins
-travelers_filtered <- travelers %>% 
-  filter(origin %in% top_orig$province,
-         destination %in% top_dest$province) %>% 
-  select(id, origin, destination, X1CE:X5CE) %>% 
-  # filter(X2CE == TRUE) %>%
-  # select(-c(X1CE:X5CE)) %>%
-  drop_na() %>%
-  pivot_longer(cols = X1CE:X5CE, names_to = "century", values_to = "value") %>% 
-  count(origin, destination, century, value) %>% 
-  spread(value, n, fill = 0) %>%
-  select(-'FALSE')
- 
-  # I would like to summarize by number of movements between provinces per century
-
-travelers_filtered
-
-# summarize the data on birth provinces
-b_province <- travelers_filtered %>%
-  group_by(origin) %>% 
-  tally() %>% 
-  rename(source_int = n, source = origin)
-
-# enrich the traveler data with the summaries
-df <- travelers_filtered %>%
-  filter(century == "X1CE") %>% 
-  rename(source = origin, target = destination, target_int = 'TRUE') %>% 
-  select(source, target, target_int) %>% 
-  left_join(b_province, by = "source") %>% 
-  relocate(source_int, .after = source) %>% 
-  drop_na() %>% 
-  filter(target_int > 10)
-
-df
+# What are the unique provinces?
+birthplace_prov %>% 
+  distinct(province) %>% 
+  pull(province) %>% 
+  sort()
 
 
+# Why are there such big cohorts in Moesia Superior?
+LIST %>% 
+  filter(EDH.ID== "HD032316")
+
+# Where are migrants from in Hispania and Baetica -there seem to be a lot of villages?
+
+birthplace_prov %>% 
+  filter( province == "Baetica" | province == "Hispania Citerior"  ) %>% 
+  select(province, origo_clean, pleiades_title) %>% 
+  count(pleiades_title) %>% 
+  #arrange(desc(n)) %>% 
+  mapview(zcol = "n", cex = "n", label = "pleiades_title")
+
+birthplace_prov %>% 
+  filter(province == "Venetia et Histria (Regio X)"  ) %>% 
+  select(province, origo_clean, pleiades_title) %>% 
+  count(pleiades_title) %>% 
+  #arrange(desc(n))  
+  mapview(zcol = "n", cex = "n", label = "pleiades_title")
+
+  
+# Compare the Spanish figures with Moesia
+birthplace_prov %>% 
+  filter(province == "Moesia Superior"  ) %>% 
+  select(province, origo_clean, pleiades_title) %>% 
+  count(pleiades_title) %>% 
+  arrange(desc(n))  
+  mapview(zcol = "n", cex = "n", label = "pleiades_title")
+
+  
+# .. and Germany
+birthplace_prov %>% 
+  filter(province == "Germania Inferior"  ) %>% 
+  select(province, origo_clean, pleiades_title) %>% 
+  count(pleiades_title) %>% 
+  arrange(desc(n))  
+  mapview(zcol = "n", cex = "n", label = "pleiades_title")
+
+```
+If we compare the count of unique inscriptions from each province with the number of unique people, we see how much disparity there is in recruitment techniques - word of mouth, official recruiters, poverty or other push factors behind the sign up.
+```{r}
+# Count of unique inscriptions from each birth region
+  
+birthplace_prov %>% 
+  filter( province == "Baetica" | province == "Hispania Citerior"  ) %>% 
+  select(hd_nr) %>%
+  distinct(hd_nr)
+
+birthplace_prov %>% 
+  filter( province == "Germania Superior" ) %>% 
+  select(hd_nr) %>%
+  distinct(hd_nr)
+
+birthplace_prov %>% 
+  group_by(province, hd_nr) %>% 
+  tally()
+  
+birthplace_prov %>% 
+  filter( province == "Moesia Superior" ) %>% 
+  group_by(hd_nr) %>%
+  tally()
 
 ```
 
+In a single inscription from Viminacium (near modern Kostolac), over 40 individuals (soldiers and others) are mentioned in a list below dedication. So HD032316 should allocate 40 people to Moesia Superior as a deathplace, and maybe also birthplace (many are from Scupi and Remesiana, others from Salona, Montana and others). All are military with various roles mentioned, such as interpreter, guardian of arms (custos armorum), signifer, imaginifer, etc.
+The signatories need not have died here, they are merely named as contributors to the dedication. So reading Viminacium as a deathplace is an exaggeration, however, they probably lived nearby.
 
-### Sankey plot
-```{r eval=FALSE}
-# DOES NOT WORK!   
-library(ggsankey)
-ggplot(df, aes(x = source, 
-               next_x = target, 
-               node = source_int, 
-               next_node = target_int, 
-               fill = factor(source_int))) +
-  geom_sankey()
+Roma is low in the number of birth and death provinces as its name overlaps with Lazio et Histria. It is mentioned 33 and 104 times in the respective datasets. Except when the coordinates place an individual directly in Rome, it often hides behind Lazio (which comes alphabetically first) as they overlap spatially.
+
+```{r lazio-Rome}
+# What is the situation with Rome and Lazio et Histria?
+birthplace_prov %>% 
+   distinct(province) %>% 
+   pull(province) %>% 
+   sort()
+
+birthplace_prov %>% 
+  st_drop_geometry() %>% 
+  filter(province == "Roma"  |  province == "Latium et Campania (Regio I)" ) %>% 
+  select(province, hd_nr, id, pleiades_title) %>%
+  arrange(pleiades_title) %>% 
+  pull(pleiades_title) %>% table()
+
+birthplace_prov %>% 
+  filter(pleiades_title== "Roma") %>%
+  distinct(id)
 
 ```
+There are 32 duplicates where pleiades_title is "Roma", as the spatial origo point falls both in the polygon of Rome and Latium et Campania
+There are 60 total emigrants from Latium et Campania, of whom 32 are from Rome proper, 3 from Capua and Teanum Sidicum , 2 from Praeneste, Campania and Ostia.
+There are 33 migrants from the province "Roma", where 32 are from Rome proper and 1 from Forum Augusti. However, the second dataset is clearly a duplicate, caused by the overlap of the point with two polygons - one of Latium and another of Rome. If we look at *distinct* id that share the pleiades_title 'Roma', we get 32 discrete/ unique individuals.
 
