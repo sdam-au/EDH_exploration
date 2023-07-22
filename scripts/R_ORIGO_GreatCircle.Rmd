@@ -20,7 +20,7 @@ library(mapview)
 
 ```
 
-# Get province and LIRE data
+## Get province and LIRE data
 
 ```{r}
 # Pleiades provinces

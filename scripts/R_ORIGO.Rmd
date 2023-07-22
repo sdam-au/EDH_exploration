@@ -13,7 +13,48 @@ library(mapview)
 library(leaflet)
 ```
 
-This script should be run in sequence to R_EXPLORING PEOPLE where the necessary data> EDH tibble are created and people unnested.
+## Testing LIST 0.6
+Here I test to extract people out of our aggregate datasets LIST nad LIRE respectively
+```{r}
+LIST <- st_read_parquet("../data/large_data/LIST_v0-6.parquet")
+
+# Check for the extistence of people column in LIST 
+colnames(LIST)
+LIST$people[1:2]
+which(is.na(LIST$people)) # some 33555 inscriptions do not have a person associated 
+
+# Check you have loaded origo parquet
+unique(origo$hd_nr)
+
+# Extract non-missing people from the origo subset
+people_or_unnested <- LIST %>% 
+  dplyr::select(LIST.ID, EDH.ID, people) %>% 
+  filter(EDH.ID %in% unique(origo$hd_nr)) %>% 
+  unpack(people)  %>% 
+  unnest_wider(people, simplify = TRUE) %>% 
+  unnest_longer(c(person_id,name, cognomen, nomen, supernomen, gender, praenomen, `age: years`, `age: months`, `age: days`, `age: hours`, status, occupation, tribus, origo)) %>% 
+  # selecting only inscriptions that have people
+  filter(!is.na(person_id))
+
+# See who has "origo" - 2288 individuals
+people_or_unnested %>% 
+  filter(!is.na(origo))
+
+# Extract non-missing people from LIRE
+list_people_unnest <- LIST %>% 
+  dplyr::select(LIST.ID, EDH.ID, people) %>% 
+  filter(!is.na(people)) %>% 
+  unpack(people)  %>% 
+  unnest_wider(people, simplify = TRUE) %>% 
+  unnest_longer(c(person_id,name, cognomen, nomen, supernomen, gender, praenomen, `age: years`, `age: months`, `age: days`, `age: hours`, status, occupation, tribus, origo)) %>% 
+  # selecting only inscriptions that have people
+  filter(!is.na(person_id))
+
+```
+
+
+
+The script below should be run in sequence to R_EXPLORING PEOPLE where the necessary data> EDH tibble are created and people unnested.
 There is the origo and then lots of findspot data, e.g., findspot_ancient, findspot_modern, their cleaned versions and findspot_certainty, 
 
 ```{r}
@@ -23,6 +64,7 @@ EDH_people %>%
   select(matches("cognomen|findspot|origo|province|geo"))
 ```
 There is origo in the people attribute and additional 14 columns with spatial/geographic information in the enriched EDH attributes. Except for origo, they originate from the inscription itself, describing its provenance or context of discovery.
+
 
 # Origo in EDH people
 ```{r}
@@ -1218,129 +1260,4 @@ age_not_after %>%
                 color = "brown", size=0.5)
 
 ```
-
-
-## Gender
-
-```{r}
-epitaph %>% 
-  count(gender, sort=TRUE) %>% 
-  mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
-  mutate(ratio_total = reorder(ratio_total, n)) %>%
-  ggplot(aes(y=gender, x=n)) +
-  geom_col(color="white", fill="orange", width=0.8, stat="identity", fill=gender) +
-  coord_cartesian(xlim=c(0,30000)) +
-  theme_minimal() +
-  theme(text = element_text(size=14)) +
-  labs(y="Gender category", x="Number of instances", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) +
-  geom_label(aes(label= n)) 
-# +  geom_text(aes(label = n), colour = "red", fontface = "bold", hjust = -0.1) 
-  
-ggsave("../figures/Gender_total_epitaphs.png", width = 12, height = 12)
-
-```
-
-```{r}
-
-
-epitaph %>% 
-  count(gender, sort=TRUE) %>% 
-  mutate(ratio_total = n/(nrow(epitaph)/100)) %>% 
-  mutate(ratio_total = round(ratio_total, digits = 2)) %>% 
-  filter(ratio_total >0.5) %>% 
-  ggplot(aes(y=gender, x=ratio_total, fill=gender)) +
-  geom_bar(width=0.8, stat="identity") +
-  coord_cartesian(xlim=c(0,60)) +
-  theme_minimal() +
-  theme(text = element_text(size=16)) +
-  labs(y="Gender category", x="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = ggtitle(paste("n =", nrow(epitaph), "inscriptions" ))) +
-  geom_label(aes(label= ratio_total), hjust = -0.1) +
-#+ geom_text(aes(label = ratio_total)) 
-  theme(legend.position = "none")
-
-ggsave("../figures/Gender_epitaphs.png", width = 8, height = 8)
-```
-
-```{r}
-epitaph %>% 
-  dplyr::filter(gender == "male"| gender == "M?") -> epitaph_male
-
-epitaph %>% 
-  dplyr::filter(gender == "female"| gender == "F?") -> epitaph_female
-```
-
-```{r}
-gender_true_ratio <- as.data.frame(cbind(male=nrow(epitaph_male), female=nrow(epitaph_female)))
-gender_true_ratio %>% 
-  gather() %>% 
-  rename(gender = key) %>% 
-  rename(n = value) %>% 
-  as.data.frame() -> gender_ratio 
-
-gender_ratio %>% 
-  ggplot(aes(x=gender, y=n)) +
-  geom_col(color="white", fill="orange", width=0.5, stat="identity") +
-  theme_minimal() +
-  theme(text = element_text(size=14)) +
-  labs(x="Gender category", y="Number of people", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
-  #geom_label(aes(label= n)) +
-  geom_label(aes(label = n), colour = "black", fontface = "bold", vjust = 0.5) 
-
-ggsave("../figures/Gender_total_ratio_epitaphs.png", width = 12, height = 12)
-  
-```
-
-```{r}
-gender_ratio %>% 
-  mutate(ratio = n/(sum(n))*100) %>%
-  mutate(ratio = round(ratio, digits =2)) %>% 
-  ggplot(aes(x=gender, y=ratio), color=gender) +
-  geom_col(width=0.5, stat="identity", fill = "brown") +
-  theme_minimal() +
-  theme(text = element_text(size=14)) +
-  labs(x="Gender category", y="%", title= "Gender ratio on epitaphs in the EDH database", subtitle = "n = 47,803 inscriptions" ) + 
-  #geom_label(aes(label= ratio)) + 
-  geom_label(aes(label = ratio), colour = "black", fontface = "bold", vjust = 0.5) 
-
-ggsave("../figures/Gender_ratio_epitaphs.png", width = 12, height = 12)
-```
-
-
-## Status on funerary inscriptions
-
-```{r}
-
-```
-
-
-```{r}
-str_split_fixed(epitaph$status, ";", n=3) %>% 
-  as.data.frame() -> status_fun
-
-status_counts_fun<- status_fun %>% 
-  cbind(combined = c(status_fun$V1,status_fun$V2,status_fun$V3)) %>% 
-  filter(combined != "") %>% 
-  mutate(combined_clean = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>% 
-  mutate(combined_clean = str_replace_all(string = combined_clean, pattern = "^ ", replacement = "")) %>% 
-  count(combined_clean, sort=TRUE)
-
-status_counts_fun 
-```
-
-```{r}
-status_counts_fun %>% 
-  mutate(combined_clean = reorder(combined_clean, n)) %>% 
-  ggplot(aes(y=combined_clean, x=n, fill=combined_clean)) +
-  geom_col(width=0.8, stat="identity") +
-  coord_cartesian(xlim=c(0,5000)) +
-  labs(x = "Number of instances", y = "Status category", title = "Status on funerary inscriptions", subtitle = ggtitle(paste("n =", nrow(epitaph), "inscriptions"))) +
-  geom_label(aes(label= n)) +
-  theme_linedraw(base_size = 13) +
-  theme(legend.position = "none")
-
-ggsave("../figures/Status_funerary_overview.jpg") #width = 16, height = 12) 
-ggsave("../figures/Status__funerary_overview.png", width = 16, height = 12) 
-```
-
-
 

@@ -1,0 +1,99 @@
+---
+title: "Sankey"
+author: "Adela Sobotkova"
+date: "2023-07-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Sankey COPIED BUT NOt working YET - ELABORATE!
+
+Construct Sankey diagrams of people movement from one Roman province to another using the Origo dataset of linestrings. See R_ORIGO_parquet.Rmd for findspot and origo provice allocation.
+
+
+https://stackoverflow.com/questions/63255589/create-a-sankey-diagram-with-tidy-data-in-r
+
+https://r-charts.com/flow/sankey-diagram-ggplot2/
+
+https://www.kaggle.com/code/paulc91/visualise-flows-with-r-d3/report  # the best resource is here
+
+```{r eval=FALSE}
+# Sankey network data preparation
+
+top_orig <- birthplace_prov %>%
+  st_drop_geometry() %>% 
+  group_by(province) %>% 
+  tally() %>% arrange(desc(n))
+  #arrange(desc()) %>% 
+  top_n(20, n)
+
+top_dest <- deathplace_prov%>%
+  st_drop_geometry() %>% 
+  group_by(province) %>% 
+  tally() %>% arrange(desc(n))
+  top_n(20, n)
+
+travelers <- birthplace_prov %>% 
+  st_drop_geometry() %>% 
+  rename(origin=province) %>% 
+  left_join(st_drop_geometry(deathplace_prov)[c(1:2,5,22)], by = "id") %>% 
+  rename(destination = province) %>% 
+  relocate(origin, destination, .before = origo)
+
+# travelers going to the most frequent destinations and from frequent origins
+travelers_filtered <- travelers %>% 
+  filter(origin %in% top_orig$province,
+         destination %in% top_dest$province) %>% 
+  select(id, origin, destination, X1CE:X5CE) %>% 
+  # filter(X2CE == TRUE) %>%
+  # select(-c(X1CE:X5CE)) %>%
+  drop_na() %>%
+  pivot_longer(cols = X1CE:X5CE, names_to = "century", values_to = "value") %>% 
+  count(origin, destination, century, value) %>% 
+  spread(value, n, fill = 0) %>%
+  select(-'FALSE')
+ 
+  # I would like to summarize by number of movements between provinces per century
+
+travelers_filtered
+
+# summarize the data on birth provinces
+b_province <- travelers_filtered %>%
+  group_by(origin) %>% 
+  tally() %>% 
+  rename(source_int = n, source = origin)
+
+# enrich the traveler data with the summaries
+df <- travelers_filtered %>%
+  filter(century == "X1CE") %>% 
+  rename(source = origin, target = destination, target_int = 'TRUE') %>% 
+  select(source, target, target_int) %>% 
+  left_join(b_province, by = "source") %>% 
+  relocate(source_int, .after = source) %>% 
+  drop_na() %>% 
+  filter(target_int > 10)
+
+df
+
+
+
+```
+
+
+### Sankey plot
+```{r eval=FALSE}
+# DOES NOT WORK!   
+library(ggsankey)
+ggplot(df, aes(x = source, 
+               next_x = target, 
+               node = source_int, 
+               next_node = target_int, 
+               fill = factor(source_int))) +
+  geom_sankey()
+
+```
+
+

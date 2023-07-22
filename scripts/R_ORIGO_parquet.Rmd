@@ -17,6 +17,7 @@ library(sf)
 
 library(sfarrow)
 library(mapview)
+library(tmap)
 ```
 
 ## Get province, origo and LIST data
@@ -24,31 +25,28 @@ library(mapview)
 *What are all these datasets? Explanation is needed!*
 We need the following inputs for the analysis: 
 
-*origo dataset that contains both origo and findspot converted into numeric coordinates
-*LIST with inscription data containing findspot name
-*Roman province boundaries for visualisation
+*origo dataset that contains both origo and findspot locations converted into numeric coordinates, the former as pleiades_Longitude/Latitude and origo_point columns, the latter as edh_point. 
+*LIST with inscription data containing findspot geometry, ancient and modern names as well as other descriptive metadata
+*Roman province boundaries from Pleiades and EDH respectively. Pleiades boundaries collate all changes over time, without providing attributes by which one could filter. EDH has invalid geometries, that Vojtech fixed in Python.
 
 ```{r data}
 
 # Origo parquet of linestrings is drawn from the pleiades point geocoded on the basis of origo by Mathias and Vojtech travelling towards EDH_point generated from findspot, produced by EDH editors.
 origo <- st_read_parquet("../data/origo_geo.parquet")
-colnames(origo)
 
 # Pleiades provinces data have overlapping variants without description
 romanEmpire <- read_sf("../data/pleiades_regions.geojson") # not great as they collate all province changes over time without identities
 
-
 # EDH provinces - the best compromise for non-overlapping provincial boundaries, from VOjtech on the basis of EDH provinces
 provinceEDH <- read_sf("../data/provinces_valid_BACKUP.geojson")
 st_is_valid(provinceEDH) 
-
 # provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
 # mapview(provinceEDH, zcol = "valid")
 
 # LIRE from https://zenodo.org/record/7966484
-#LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
-LIST <- st_read_parquet("../data/large_data/LIST_v0-5.parquet")
-colnames(LIST)
+# LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
+# LIST from https://zenodo.org/record/7993915
+LIST <- st_read_parquet("../data/large_data/LIST_v0-6.parquet") # newest version with 2021 people as a list column of tibbles
 
 # Grab inscriptions that contain origo
 LISTfindspot <- LIST %>% 
@@ -60,7 +58,8 @@ LISTfindspot <- LIST %>%
 
 LISTfindspot
 
-# paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet")
+# Dataset of vertices in arc that connects origo with findspot, produced by Vojtech for animation
+# paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet") # not relevant here
 ```
 
 
@@ -132,12 +131,16 @@ nrow(origo) - length(which(duplicated(origo$edh_point)))
 ```
 
 ## Spatial Data Streamlining
-Create two point simple features using the point columns in origo. Call origin birthplace coordinates and deathplace deathplace
-```{r spatialize death-and-birthplaces}
+Create two point simple features using the point columns in origo. Currently the edh-point, the findspot, is the active geometry, but that can be changed. 
+Remove 'X' from column names marking presence/absence of person in a given century and project simple features into 3035 for distance caluclations (it's a 2D projection).
 
+```{r spatialize death-and-birthplaces}
+# Column names in origo data
 names(origo) # edh point is the active geometry
 names(origo)[14:19] <- c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE")
-deathplace <- origo %>%
+
+# Deathplace project
+deathplace <- origo %>%  # ensure that 
   st_as_sf() %>% 
   st_set_crs(4326) %>% #mapview(zcol = "certainty")
   #st_join(LISTfindspot) %>% 
@@ -145,7 +148,8 @@ deathplace <- origo %>%
   # add findspot names to the spatial coordinates in deathplace
   full_join(st_drop_geometry(LISTfindspot), by = c("hd_nr"="EDH.ID")) 
 
-birthplace <- origo %>%  # switching active geometry to ori
+# Birthplace
+birthplace <- origo %>%  # switching active geometry to the place of origin
   st_drop_geometry() %>% 
   st_as_sf(coords = c("pleiades_Longitude","pleiades_Latitude"), crs = 4326)  %>% 
   st_transform(3035)
@@ -160,7 +164,7 @@ deathplace$edh_point # contains data
 
 
 
-### Check province and origo alignment: projection and validity
+### Check EDH province and b-d-place alignment: projection and validity
 ```{r}
 # edh province polygons need clean up - NOT FINISHED
 st_crs(provinceEDH) == st_crs(birthplace)
@@ -185,7 +189,8 @@ leaflet() %>%
 
   addCircles(origo$pleiades_Longitude,
 
-             origo$pleiades_Latitude) %>%
+             origo$pleiades_Latitude, 
+             label = origo$pleiades_title) %>%
 
   addPolygons(data = st_transform(provinceEDH, 4326), opacity = 0.2, color = "green")
 ```
@@ -214,7 +219,7 @@ In order to create a facetted view of change over time, we need the century valu
 
 ### Time-series preparation : lengthening of datasets
 ```{r pivot-long}
-# See the ~X1BCE fields in the dataset which indicate presence/absence in a given century
+# See the ~1BCE fields in the dataset which indicate presence/absence in a given century
 names(origo)
 
 unique(origo$certainty)
@@ -223,7 +228,7 @@ unique(origo$certainty)
 
 deathplace_long <- deathplace %>%  
   select(-origo_line) %>% 
-  pivot_longer(cols = X1BCE:X5CE,  # take values from columns and write through True/False
+  pivot_longer(cols = `1BCE`:`5CE`,  # take values from columns and write through True/False
                names_to = "century",
                values_to = "century_logical") %>% 
   filter(century_logical == TRUE)
@@ -233,7 +238,7 @@ deathplace_long <- deathplace %>%
 
 birthplace_long <- birthplace %>%  
   select(-origo_line) %>% 
-  pivot_longer(cols = X1BCE:X5CE, 
+  pivot_longer(cols = `1BCE`:`5CE`, 
                names_to = "century",
                values_to = "century_logical") %>% 
   filter(century_logical == TRUE)
@@ -357,7 +362,7 @@ library(janitor)
 
 total_travelers <- deathplace %>%
   st_drop_geometry() %>% 
-  select(id, X1BCE:X5CE) %>%
+  select(id, `1BCE`:`5CE`) %>%
   mutate_if(is.logical,as.numeric) %>% 
   adorn_totals("row", name = "Total_Travelers") %>% 
   slice(2278)
@@ -576,7 +581,7 @@ lines %>% filter(certainty == "certain")
 colnames(lines)
 lines_long <- lines %>%  
   #select(-origo_line) %>% 
-  pivot_longer(cols = X1BCE:X5CE,  # take values from columns and write through True/False
+  pivot_longer(cols = `1BCE`:`5CE`,  # take values from columns and write through True/False
                names_to = "century",
                values_to = "century_logical") %>% 
   filter(century_logical == TRUE)
@@ -1027,3 +1032,46 @@ There are 32 duplicates where pleiades_title is "Roma", as the spatial origo poi
 There are 60 total emigrants from Latium et Campania, of whom 32 are from Rome proper, 3 from Capua and Teanum Sidicum , 2 from Praeneste, Campania and Ostia.
 There are 33 migrants from the province "Roma", where 32 are from Rome proper and 1 from Forum Augusti. However, the second dataset is clearly a duplicate, caused by the overlap of the point with two polygons - one of Latium and another of Rome. If we look at *distinct* id that share the pleiades_title 'Roma', we get 32 discrete/ unique individuals.
 
+## Searching for Statius Priscus and Severus 
+```{r}
+# Search for M Statius Priscus, a famous general who crisscrossed the RE
+people_or_unnested %>% 
+  filter(nomen == "Statius")
+  filter(cognomen== "Priscus")
+  # no result, not in origo dataset
+  
+# Search in EDH people (R_ORIGO.Rmd)  
+Priscus <- EDH_people%>% 
+  filter(nomen == "Statius") %>% 
+  filter(cognomen== "Priscus") %>% 
+  pull(id)
+# 4 inscriptions mention him, but no origo is listed
+
+# Findspots for M Statius Priscus
+LIST %>% 
+  st_set_crs(4326) %>% 
+  filter(EDH.ID%in%Priscus) %>% 
+  mapview() + mapview(provinceEDH)
+```
+
+```{r}
+# Search for Sextus Julius Severus, a famous general who crisscrossed the RE
+people_or_unnested %>% 
+  filter(nomen == "Iulius") %>%   # 108
+  filter(cognomen== "Severus") # 37 if only Severus is queried
+  # only Quintus Iulius Severus DInia found. Sextus not in origo dataset
+  
+# Search in EDH people (R_ORIGO.Rmd)  
+ISeverus <- EDH_people%>% 
+  filter(nomen == "Iulius") %>%   # 1384
+  filter(cognomen== "Severus") %>% # 14 individuals match
+  filter(status == "senatorial order") %>%  # 2 individuals but no origo! 
+  pull(id)
+# 2 inscriptions with Iulius Severus , but no origo is listed and not sure this is him
+
+# Findspots for Sextus Julius Severus
+LIST %>% 
+  st_set_crs(4326) %>% 
+  filter(EDH.ID%in%ISeverus) %>% 
+  mapview() + mapview(provinceEDH)
+```
