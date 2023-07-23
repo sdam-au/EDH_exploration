@@ -1027,6 +1027,13 @@ birthplace_prov %>%
   filter(pleiades_title== "Roma") %>%
   distinct(id)
 
+
+# TOtal inscriptions from Rome
+
+LIST %>% 
+  st_drop_geometry() %>% 
+  filter(findspot_ancient_clean == "Roma") %>% 
+  select(matches("findspot|province|text_inter"))
 ```
 There are 32 duplicates where pleiades_title is "Roma", as the spatial origo point falls both in the polygon of Rome and Latium et Campania
 There are 60 total emigrants from Latium et Campania, of whom 32 are from Rome proper, 3 from Capua and Teanum Sidicum , 2 from Praeneste, Campania and Ostia.
@@ -1054,8 +1061,12 @@ LIST %>%
   mapview() + mapview(provinceEDH)
 ```
 
+###  Sextus Julius Severus
+Is this famous general who pacified Dacia, Britannia and Armenia (fromt eh Parthians) findable in our inscriptions?
+Born in Luceria in Apulia, is his origo in the EDH/LIRE?
+
 ```{r}
-# Search for Sextus Julius Severus, a famous general who crisscrossed the RE
+# Search for
 people_or_unnested %>% 
   filter(nomen == "Iulius") %>%   # 108
   filter(cognomen== "Severus") # 37 if only Severus is queried

@@ -62,6 +62,24 @@ EDH_people <- readRDS("../data/large_data/edh_people21.rds")
 head(EDH_people) # EDH_people comes from R_EXPLORING_PEOPLE script 
 EDH_people %>% 
   select(matches("cognomen|findspot|origo|province|geo"))
+colnames(LIST)
+LIST %>% 
+  st_drop_geometry() %>% 
+  select(matches("ID|geo|findspot|place")) %>% 
+  #distinct(place) %>% # 22 691 unique places
+  distinct(findspot_clean) #%>% 
+  pull()
+  
+  LIST %>% 
+    st_drop_geometry() %>% 
+    filter(str_detect(findspot_clean, regex("Forum Vetus",ignore_case = TRUE))) %>% 
+    select(EDH.ID, findspot_clean, findspot_ancient_clean)
+  
+  # Isthm and 
+  LIST %>% 
+    st_drop_geometry() %>% 
+    filter(str_detect(findspot_clean, regex("brunnen",ignore_case = TRUE))) %>% 
+    select(EDH.ID, findspot_clean, findspot_ancient_clean)
 ```
 There is origo in the people attribute and additional 14 columns with spatial/geographic information in the enriched EDH attributes. Except for origo, they originate from the inscription itself, describing its provenance or context of discovery.
 
@@ -71,10 +89,32 @@ There is origo in the people attribute and additional 14 columns with spatial/ge
 origo<- as.data.frame(EDH_people$origo) 
 origo
 
-origo %>% 
-  filter(`EDH_people$origo` != "") %>% 
+EDH_people %>% 
+  filter(!is.na(origo)) %>% 
   #mutate(clean_origo = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>%
-  count(`EDH_people$origo`, sort=TRUE)
+  count(origo, sort=TRUE)
+```
+# Origo in EDH_person_data.csv
+```{r}
+EDH_persons <- read_csv("../data/edh_data_pers.csv")
+tail(EDH_persons)
+
+# percentage of persons with origo
+sum(!is.na(EDH_persons$origo))/sum(is.na(EDH_persons$origo))
+
+# persons with origo
+EDH_persons %>% 
+  filter(!is.na(origo))
+
+# unique origo places
+EDH_persons %>% 
+  filter(!is.na(origo)) %>% 
+  count(origo, sort=TRUE)
+
+# inscriptions with origo
+EDH_persons %>% 
+  filter(!is.na(origo)) %>% 
+  distinct(hd_nr)
 ```
 
 ## How many people have origin in their inscription?
@@ -1260,4 +1300,7 @@ age_not_after %>%
                 color = "brown", size=0.5)
 
 ```
+
+
+### One-offs
 
