@@ -13,9 +13,9 @@ library(mapview)
 library(leaflet)
 ```
 
-## Testing LIST 0.6
+## Testing LIST 0.6 and LIRE 2.3
 Here I test to extract people out of our aggregate datasets LIST nad LIRE respectively
-```{r}
+```{r LIST}
 LIST <- st_read_parquet("../data/large_data/LIST_v0-6.parquet")
 
 # Check for the extistence of people column in LIST 
@@ -27,7 +27,7 @@ which(is.na(LIST$people)) # some 33555 inscriptions do not have a person associa
 unique(origo$hd_nr)
 
 # Extract non-missing people from the origo subset
-people_or_unnested <- LIST %>% 
+people_ls_unnested <- LIST %>% 
   dplyr::select(LIST.ID, EDH.ID, people) %>% 
   filter(EDH.ID %in% unique(origo$hd_nr)) %>% 
   unpack(people)  %>% 
@@ -36,205 +36,90 @@ people_or_unnested <- LIST %>%
   # selecting only inscriptions that have people
   filter(!is.na(person_id))
 
-# See who has "origo" - 2288 individuals
-people_or_unnested %>% 
+# See who has "origo" - 2288 individuals.
+people_ls_unnested %>% 
   filter(!is.na(origo))
 
+# Add column so join with origo is possible
+people_ls_unnested <- people_ls_unnested %>% 
+ # filter(!is.na(origo))%>% 
+  mutate(id = paste0(EDH.ID,"/",person_id))
+
+
 # Extract non-missing people from LIRE
-list_people_unnest <- LIST %>% 
+# list_people_unnest <- LIST %>% 
+#   dplyr::select(LIST.ID, EDH.ID, people) %>% 
+#   filter(!is.na(people)) %>% 
+#   unpack(people)  %>% 
+#   unnest_wider(people, simplify = TRUE) %>% 
+#   unnest_longer(c(person_id,name, cognomen, nomen, supernomen, gender, praenomen, `age: years`, `age: months`, `age: days`, `age: hours`, status, occupation, tribus, origo)) %>% 
+#   # selecting only inscriptions that have people
+#   filter(!is.na(person_id))
+
+```
+
+## LIRE
+
+```{r LIRE}
+#LIRE <- st_read_parquet("../data/large_data/LIRE")
+
+# Check for the existence of people column in LIRE 
+colnames(LIRE)
+LIRE$people[1:2]
+length(which(is.na(LIRE$people))) # some 19829 LIRE inscriptions do not have a person associated 
+
+# Check you have loaded origo parquet
+unique(origo$hd_nr)
+
+# Extract non-missing people from the origo subset
+people_or_unnested <- LIRE %>% 
   dplyr::select(LIST.ID, EDH.ID, people) %>% 
-  filter(!is.na(people)) %>% 
+  filter(EDH.ID %in% unique(origo$hd_nr)) %>% 
   unpack(people)  %>% 
   unnest_wider(people, simplify = TRUE) %>% 
   unnest_longer(c(person_id,name, cognomen, nomen, supernomen, gender, praenomen, `age: years`, `age: months`, `age: days`, `age: hours`, status, occupation, tribus, origo)) %>% 
   # selecting only inscriptions that have people
-  filter(!is.na(person_id))
+  filter(!is.na(person_id)) # 4562 people with 18 attributes
 
+
+# See who has "origo" - 2263 LIRE individuals
+people_or_unnested <- people_or_unnested %>% 
+  filter(!is.na(origo)) %>% 
+  mutate(id = paste0(EDH.ID,"/",person_id))
+
+# at least 14 origo people are missing, which ones? Perhaps ones born outside of empire?
+
+'%nin%' <- Negate('%in%')
+origo %>% 
+  filter(id%nin%people_or_unnested$id) %>% 
+  st_set_crs(4326) %>% 
+  mapview()
+
+birthplace %>% 
+  filter(id%nin%people_or_unnested$id) %>% 
+  mapview()
 ```
-
-
 
 The script below should be run in sequence to R_EXPLORING PEOPLE where the necessary data> EDH tibble are created and people unnested.
 There is the origo and then lots of findspot data, e.g., findspot_ancient, findspot_modern, their cleaned versions and findspot_certainty, 
 
-```{r}
+```{r EDH}
 EDH_people <- readRDS("../data/large_data/edh_people21.rds")
 head(EDH_people) # EDH_people comes from R_EXPLORING_PEOPLE script 
 EDH_people %>% 
   select(matches("cognomen|findspot|origo|province|geo"))
 colnames(LIST)
-LIST %>% 
-  st_drop_geometry() %>% 
-  select(matches("ID|geo|findspot|place")) %>% 
-  #distinct(place) %>% # 22 691 unique places
-  distinct(findspot_clean) #%>% 
-  pull()
-  
-  LIST %>% 
-    st_drop_geometry() %>% 
-    filter(str_detect(findspot_clean, regex("Forum Vetus",ignore_case = TRUE))) %>% 
-    select(EDH.ID, findspot_clean, findspot_ancient_clean)
-  
-  # Isthm and 
-  LIST %>% 
-    st_drop_geometry() %>% 
-    filter(str_detect(findspot_clean, regex("brunnen",ignore_case = TRUE))) %>% 
-    select(EDH.ID, findspot_clean, findspot_ancient_clean)
+
 ```
 There is origo in the people attribute and additional 14 columns with spatial/geographic information in the enriched EDH attributes. Except for origo, they originate from the inscription itself, describing its provenance or context of discovery.
 
 
 # Origo in EDH people
 ```{r}
-origo<- as.data.frame(EDH_people$origo) 
-origo
-
 EDH_people %>% 
-  filter(!is.na(origo)) %>% 
-  #mutate(clean_origo = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>%
+  filter(!is.na(origo)) %>% #distinct(origo)
   count(origo, sort=TRUE)
 ```
-# Origo in EDH_person_data.csv
-```{r}
-EDH_persons <- read_csv("../data/edh_data_pers.csv")
-tail(EDH_persons)
-
-# percentage of persons with origo
-sum(!is.na(EDH_persons$origo))/sum(is.na(EDH_persons$origo))
-
-# persons with origo
-EDH_persons %>% 
-  filter(!is.na(origo))
-
-# unique origo places
-EDH_persons %>% 
-  filter(!is.na(origo)) %>% 
-  count(origo, sort=TRUE)
-
-# inscriptions with origo
-EDH_persons %>% 
-  filter(!is.na(origo)) %>% 
-  distinct(hd_nr)
-
-# insriptions total
-EDH_persons %>% 
-  count(hd_nr)
-
-2217/46801
-2217/nrow(LIST)
-```
-
-## How many people have origin in their inscription?
-
-```{r}
-EDH_people %>% 
-  select(origo) %>% 
-  filter(!is.na(origo)) %>% 
-  distinct()
-
-```
-
-The answer is 2648 people out of 92427, which is barely 3% , or precisely: `2648/92427*100` %
-These 2648 people originate from 1889 distinct places. For these we can pin a point in the map for 676 locations or 36%.
-
-## What is the men:women ratio?
-```{r}
-EDH_people %>% 
-    group_by(gender) %>%
-  summarize(cnt = n()) %>% 
-  mutate(ratio = round(cnt/sum(cnt)*100, 1))
-
-EDH_people %>% 
-  select(origo, gender) %>% 
-  filter(!is.na(origo)) %>% 
-  group_by(gender) %>%
-  summarize(cnt = n()) %>% 
-  mutate(ratio = round(cnt/sum(cnt)*100, 1))
-```
-Declarations of origo are less frequent among women then men. The ratio in EDH is ca 15:65 women to men, while in the corpus with origo the ratio is even more skewed with only 5% of women and 85% of men (with the remaining 10-20% being NA values)
-
-## What kind of inscription has origo
-To explore other inscription-derived attributes of people iwth origin, we need to use EDH_full - a joined dataset of origo and EDH attributes
-```{r}
-# number of inscriptions that have origo (whether geocoded or not)
-EDH_people %>% 
-  filter(!is.na(origo)) %>% 
-  group_by(id) %>% 
-  tally()
-
-EDH_full %>%  # use EDH_full
-  filter(!is.na(origo)) %>% 
-  count(type_of_inscription_clean, sort=T) %>% 
-  mutate(ratio = round(n/(sum(n)/100),2))
-
-EDH_full %>%  # was EDH_full
-  filter(!is.na(origo)) %>% 
-  count(type_of_inscription_clean, sort=T) %>% 
-  mutate(ratio = round(n/(sum(n)/100),2)) %>% 
-  slice(c(1:4,6:8)) %>%   # grab the first seven categories
-  ggplot(aes(x = "", y = ratio, fill = type_of_inscription_clean)) +
-  geom_bar(stat="identity", width=2, color = "white") +
-  coord_polar("y", start=0.5)+
-  labs(fill = paste0("Inscription Type (n = 2648)"))+
-  theme_void() # remove background, grid, numeric labels
-
-```
-
-Expressions of 'origo' feature mostly in epitaphs followed by honorific and votive inscriptions, lists and military diplomas. Epitaphs are personal, while most others can be also more public.
-
-## What status did the people have?
-Some people declare multiple statuses so this is the maximum broadest picture.
-```{r}
-# Check the contents of the 'status' column in the EDH_full
-colnames(EDH_full)
-EDH_full$status
-
-# Subset to inscriptions with origo
-has_origo <- EDH_full %>% 
-  filter(!is.na(origo))
-# Parse the contents into a separate dataframe
-status <- has_origo  %>% 
-  pull(status) %>% 
-  str_split_fixed(pattern = ";", n = 3) %>% 
-  as.data.frame()
-
-# str_split_fixed(has_origo$status, ";", n = 3) %>%
-#   as.data.frame() -> status
-
-# Summarize the status
-status_counts <- status %>% 
-  cbind(combined = c(status$V1,status$V2,status$V3)) %>% 
-  filter(combined != "") %>% 
-  mutate(combined_clean = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>% 
-  mutate(combined_clean = str_replace_all(string = combined_clean, pattern = "^ ", replacement = "")) %>% 
-  count(combined_clean, sort=TRUE) %>% 
-  mutate(log = log10(n), perc = n/sum(n)*100)
-
-status_counts 
-```
-
-```{r}
-status_counts %>% 
-  mutate(combined_clean = reorder(combined_clean, n)) %>% 
-  ggplot(aes(y=combined_clean, x=log, fill=combined_clean)) +
-  geom_col(width=0.8, show.legend = FALSE) +
-  coord_cartesian( ylim = c(0,10)) +
-  labs(x = "Number of instances (log10)", y = "Status category", title = "Status references in the EDH dataset with origo", subtitle = ggtitle(paste("n =", nrow(has_origo), "inscriptions"))) +
-  geom_label(aes(label= n), show.legend = FALSE) +
-  theme_linedraw(base_size = 12) +
-  theme_minimal()
-```
-
-
-## What is the findspot vs origo - switch to parquet !
-```{r}
-EDH_full %>% 
-  filter(!is.na(origo) & type_of_inscription_clean == "epitaph") %>% 
-  select(origo, findspot_ancient_clean) %>% 
-  count(findspot_ancient_clean, origo, sort=T)
-``` 
-
-
 # Birth to Death Distance Analysis
 
 So this is tricky as the `origo` is an ancient placename that does not come with coordinates, can be ambiguous, poorly spelled and without a physical referent!
@@ -686,10 +571,64 @@ EDH_origo %>%
 
 ## What is the gender ratio of people on inscriptions? (male, female, NA)
 ```{r}
+# 2648 EDH data
 EDH_people %>% 
   count(gender, sort = TRUE) %>% 
   mutate(ratio = round(n/(sum(n)/100),2))
+
+# 2277 origo data
+origo %>% 
+  st_drop_geometry() %>% 
+  left_join(people_ls_unnested, by = "id") %>% 
+  count(gender, sort = TRUE) %>% 
+  mutate(ratio = round(n/(sum(n)/100),2))
+
+
+people_or_unnested %>% 
+  mutate(id = paste0(EDH.ID,"/",person_id)) %>% 
+ # filter(!is.na(id)) %>% glimpse
+  count(gender, sort = TRUE) %>% 
+  mutate(ratio = round(n/(sum(n)/100),2))
 ```
+
+## What kinds of inscription has origo (transfer to EDH PERSONS!) based on origo 2277
+To explore other inscription-derived attributes of people with origin, we need to use a joined dataset of origo and EDH attributes
+
+```{r}
+# number of inscriptions that have origo (whether geocoded or not)
+EDH_people %>% 
+  filter(!is.na(origo)) %>% 
+  group_by(id) %>% 
+  tally()
+
+
+origo %>%  #
+  st_drop_geometry() %>% 
+#left_join(people_ls_unnested, by = "id") %>% # join more people attributes
+ left_join(LIST, by= c("hd_nr" = "EDH.ID")) %>% # join inscription attributes
+  count(type_of_inscription_clean, sort=T) %>% 
+  mutate(ratio = round(n/(sum(n)/100),1)) %>% 
+  slice(1:5)
+
+```
+Visualisation in a piechart
+
+```{r}
+origo %>%  #
+  st_drop_geometry() %>% 
+  left_join(LIST, by= c("hd_nr" = "EDH.ID")) %>%  # was EDH_full
+  count(type_of_inscription_clean, sort=T) %>% 
+  mutate(ratio = round(n/(sum(n)/100),2)) %>% 
+  slice(c(1:4,6:8)) %>%   # grab the first seven categories
+  ggplot(aes(x = "", y = ratio, fill = type_of_inscription_clean)) +
+  geom_bar(stat="identity", width=2, color = "white") +
+  coord_polar("y", start=0.5)+
+  labs(fill = paste0("Inscription type (n = 2277)"))+
+  theme_void() # remove background, grid, numeric labels
+```
+
+Expressions of 'origo' feature mostly in epitaphs followed by honorific and votive inscriptions, lists and military diplomas. Epitaphs are personal, while most others can be also more public.
+
 
 # Status
 
@@ -698,14 +637,27 @@ EDH_people %>%
 EDH_people$status %>% 
   unique()
 ```
+Look at how after 20 records or so there are more than one status, separated by ;? Let's split these up.
 
+## What is the ratio of different statuses, e.g. slave vs freedman in EDH_people
 
-## What is the ratio of different statuses, e.g. slave vs freedman
+```{r EDH-people-status}
+# Who has declared status?
+EDH_people %>% 
+  filter(!is.na(status))  # 24,632 people have
 
-```{r}
-str_split_fixed(EDH_people$status, ";", n=3) %>% 
-  as.data.frame() -> status
+# SPlit the multiple statuses into separate columns
+status <- EDH_people %>% 
+  filter(!is.na(status)) %>% 
+  pull(status) %>% 
+  str_split_fixed(";", n=3) %>% 
+  as.data.frame()
 
+# Check what is in the new columns
+unique(status$V2) # lots of different occupations
+unique(status$V3) # military personnel
+
+# count all the statuses
 status %>% 
   cbind(combined = c(status$V1,status$V2,status$V3)) %>% 
   filter(combined != "") %>% 
@@ -714,6 +666,13 @@ status %>%
   count(combined_clean, sort=TRUE) -> status_counts
 
 status_counts 
+
+# Count only the first (highest) status
+status_one <- status %>% 
+  select(V1) %>% 
+  mutate(V1 = str_replace_all(string = V1, pattern = "\\?", replacement = "")) %>% 
+  group_by(V1) %>% 
+  count(V1) %>% arrange(desc(n))
 ```
 
 ```{r}
@@ -729,10 +688,8 @@ status_counts %>%
 
 #ggsave("../figures/Status_overview.jpg", width = 12, height = 8) 
 #ggsave("../figures/Status_overview.png", width = 12, height = 8) 
-
-
 ```
-log version
+### log version
 ```{r}
 status_counts %>% 
   mutate(log=round(log10(n),1)) %>% 
@@ -745,6 +702,81 @@ status_counts %>%
   theme_linedraw(base_size = 13) +
   theme(legend.position = "none")
 
+ggsave("../figures/Status_overviewlog.png", width = 8, height = 6) 
+
+```
+##  Status in origo people
+```{r origo-people-status}
+# Who has declared status in 2277 origo?
+origo_people <- origo %>% 
+  st_drop_geometry() %>% 
+  left_join(people_ls_unnested, by = "id")
+
+origo_people %>% # join more people attributes
+  filter(!is.na(status))  # 1477 people have
+
+# SPlit the multiple statuses into separate columns
+status <- origo_people %>% 
+  filter(!is.na(status)) %>% 
+  pull(status) %>% 
+  str_split_fixed(";", n=3) %>% 
+  as.data.frame()
+
+# Check what is in the new columns
+unique(status$V2) # lots of different occupations
+unique(status$V3) # military personnel
+
+# count all the statuses
+status %>% 
+  cbind(combined = c(status$V1,status$V2,status$V3)) %>% 
+  filter(combined != "") %>% 
+  mutate(combined_clean = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>% 
+  mutate(combined_clean = str_replace_all(string = combined_clean, pattern = "^ ", replacement = "")) %>% 
+  count(combined_clean, sort=TRUE) -> status_counts
+
+status_counts 
+
+# Count only the first (highest) status
+status_one <- status %>% 
+  select(V1) %>% 
+  mutate(status = str_replace_all(string = V1, pattern = "\\?", replacement = "")) %>% 
+  group_by(status) %>% 
+  count(status, sort = TRUE) #%>% arrange(desc(n))
+
+status_one
+```
+
+### log version
+```{r}
+# with multiple statuses all collated 1277 soldiers
+status_counts %>% 
+  mutate(log=round(log10(n),1)) %>% 
+  mutate(combined_clean = reorder(combined_clean, log)) %>% 
+  ggplot(aes(y=combined_clean, x=log, fill=combined_clean)) +
+  geom_bar(width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,5)) +
+  labs(x = "Number of instances (log10)",
+       y = "Status category",
+       title = "Status references in the origo dataset",
+    subtitle = ggtitle(paste("n =", nrow(status), "people in inscriptions"))) +
+  geom_label(aes(label= n)) +
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none")
+
+# single status per person (last, highest) 1264 soldiers
+status_one %>% 
+  mutate(log =round(log10(n), 1)) %>% 
+  mutate(status = reorder(status , n)) %>% 
+  ggplot(aes(y=status, x=log, fill=status)) +
+  geom_bar(width=0.8, stat="identity") +
+  coord_cartesian(xlim=c(0,5)) +
+  labs(x = "Number of instances (log10)", 
+       y = "Status category", 
+       title = "Status references in the origo dataset", 
+       subtitle = ggtitle(paste("n =", nrow(origo_people), "people in inscriptions"))) +
+  geom_label(aes(label= n)) +
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none")
 ggsave("../figures/Status_overviewlog.png", width = 8, height = 6) 
 
 ```
@@ -885,7 +917,7 @@ EDH_people %>%
 Unfortunately, ant other details about the occupation are not provided.
 
 
-# Special focus - Funerary inscriptions
+## Special focus - Funerary inscriptions
 
 ```{r}
 #merging of age dataset with other attributes from tibble
@@ -999,7 +1031,7 @@ EDH_age<- EDH_age %>%
 EDH_age$agegroup <- factor(EDH_age$agegroup, levels = c("0-2.99", "3-14.99","15-29.99", "30-39.99", "40-59.99","over 60"))  
 ```
 
-# test works
+#### test works
 ```{r}
 summary(EDH_age$total_age)
 summary(EDH_age$agegroup)
@@ -1180,7 +1212,7 @@ pyramid_age <- ggplot(population_age, aes(x = orderedage, y = population, fill =
 pyramid_age
 ```
 
-# Adela Different and Working (for change) Alternative
+#### Adela Different and Working (for change) Alternative
 ```{r}
 EDH_fun %>% 
   dplyr::select(gender, total_age) %>% 
@@ -1310,4 +1342,50 @@ age_not_after %>%
 
 
 ### One-offs
+
+
+
+## Totally random - Augustales
+
+```{r}
+# Explore Augustales: do they have occupation, gender and where does this self-identification occur?
+EDH_people %>% 
+  filter(grepl("Augustales", status, ignore.case = T)) %>% 
+  # filter(!is.na(occupation))  # 14 out of 651 have occupation data
+  # count(gender) # 2 women and 475 men in 651 records
+  left_join(LIST, by = c("id" = "EDH.ID")) %>% 
+  count(type_of_inscription_clean) %>% 
+  arrange(desc(n)) # epitaphs and votives are matched 
+
+# What is the distribution of Augustales findspots by time
+EDH_people %>% 
+  filter(grepl("Augustales", status, ignore.case = T)) %>% 
+  left_join(LIST, by = c("id" = "EDH.ID")) %>% 
+  filter(!is.na(Longitude)) %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>% 
+  mapview(zcol = "not_before") 
+  
+# What is the distribution of Augustales findspots by time
+EDH_people %>% 
+  #filter(grepl("Augustales", status, ignore.case = T)) %>% 
+   filter(grepl("Eros", cognomen, ignore.case=T)) %>% 
+  left_join(LIST, by = c("id" = "EDH.ID")) %>% 
+  filter(!is.na(Longitude)) %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>% 
+  mapview(zcol = "type_of_inscription_clean")
+
+```
+
+Augustales appear only in Europe - none in Africa or Levant. Many votives and dedications, only a half are epitaphs. Map on main trade routes?? Lots in Baetica and coastal regions of Spain and France, BAtavia and Limes as well as the Adriatic.
+
+### Remarkable augustales
+```{r}
+# Publius Decimius Eros Merula or Lucius Lupercius Exessus
+EDH_people %>% 
+ # filter(grepl("Augustales", status, ignore.case = T)) %>% 
+  filter(cognomen == "Eros") %>% 
+  select(name, nomen, status)
+  #left_join(LIST, by = c("id" = "EDH.ID")) %>% 
+
+```
 

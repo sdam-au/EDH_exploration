@@ -6,7 +6,7 @@ output: html_document
 ---
 
 Visualizing origo dataset:
-This script contains faceted maps of origin and destination of the people in EDH inscriptions (92,000 > 3000 placenames> 2277 successfully geocoded ones).
+This script contains faceted maps of origin and destination of the people in EDH inscriptions (93,000 > 3000 placenames> 2277 successfully geocoded ones).
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -43,20 +43,30 @@ st_is_valid(provinceEDH)
 # provinceEDH$valid <- sf::st_is_valid(provinceEDH$geometry)
 # mapview(provinceEDH, zcol = "valid")
 
-# LIRE from https://zenodo.org/record/7966484
-# LIRE <- st_read_parquet("../data/large_data/LIRE_v2-2.parquet")
-# LIST from https://zenodo.org/record/7993915
+# LIRE from https://zenodo.org/record/8147298 (July 2023)
+LIRE <- st_read_parquet("../data/large_data/LIRE_v2-3.parquet")
+# LIST from https://zenodo.org/record/7993915 (July 2023)
 LIST <- st_read_parquet("../data/large_data/LIST_v0-6.parquet") # newest version with 2021 people as a list column of tibbles
 
 # Grab inscriptions that contain origo
 LISTfindspot <- LIST %>% 
   filter(EDH.ID %in% origo$hd_nr) %>% 
   #filter(geometry %in% origo$edh_point)
-  select(matches("EDH.ID|LIST|findspot|Lat|Long|^status")) %>% 
+  select(matches("EDH.ID|LIST|findspot|Lat|Long|^status|province")) %>% 
   select(-matches("certainty")) %>% 
   relocate(c(status,status_notation), .after = Latitude)
 
-LISTfindspot
+colnames(LISTfindspot)
+
+
+LIREfindspot <- LIRE %>% 
+  filter(EDH.ID %in% origo$hd_nr) %>% 
+  #filter(geometry %in% origo$edh_point)
+  select(matches("EDH.ID|LIST|findspot|Lat|Long|^status|province")) %>% 
+  select(-matches("certainty")) %>% 
+  relocate(c(status,status_notation), .after = Latitude)
+
+colnames(LIREfindspot)
 
 # Dataset of vertices in arc that connects origo with findspot, produced by Vojtech for animation
 # paths <- st_read_parquet("../data/origo_linepoints_gdf.parquet") # not relevant here
@@ -120,7 +130,7 @@ origo %>%
 ```
 
 ## Death locations
-Death locations are represented by findspot in edh_point attribute. BUT WE ARE MISSING FIND SPOT NAMES in origo, so must grab them from LISTfindspot !! See spatial streamlining below
+Death locations are represented by findspot in edh_point attribute. BUT WE ARE MISSING FIND SPOT NAMES in origo, so must grab them from LIRE- or LISTfindspot !! See spatial streamlining below
 ```{r}
 colnames(origo)
 
@@ -146,7 +156,7 @@ deathplace <- origo %>%  # ensure that
   #st_join(LISTfindspot) %>% 
   st_transform(3035) %>% 
   # add findspot names to the spatial coordinates in deathplace
-  full_join(st_drop_geometry(LISTfindspot), by = c("hd_nr"="EDH.ID")) 
+  full_join(st_drop_geometry(LIREfindspot), by = c("hd_nr"="EDH.ID")) 
 
 # Birthplace
 birthplace <- origo %>%  # switching active geometry to the place of origin
@@ -380,6 +390,7 @@ knitr::kable(total_travelers, col.names = c("Century","1BCE", "1CE", "2CE", "3CE
 
 ## Birth and death province and place statistics
 Let's create some summaries of most frequent birth and death places
+
 ```{r b-d-summaries}
 ## Deathplace and Birthplace stats
 deathplace_anc_smr <- deathplace %>% 
@@ -450,6 +461,18 @@ province_centroid
 province_flow_centroid # this may need to be done in a long format for centuries
 ```
 
+
+### Birthplace and Deathplace provinces - save data
+```{r}
+# Connect the linestrings back with birthplace and deathplace data from origo and LISTfindspot 
+b_prov <- birthplace_prov[c("hd_nr", "province")] %>% st_drop_geometry()
+d_prov <- deathplace_prov[c("hd_nr", "province")] %>% st_drop_geometry()
+write.csv(b_prov[duplicated(b_prov$hd_nr),], "../output_data/checkbprovforduplicates.csv")
+write.csv(d_prov[duplicated(d_prov$hd_nr),], "../output_data/checkdprovforduplicates.csv")
+
+```
+
+
 ## Sync maps of birth and deathplaces - province centroids
 
 ```{r}
@@ -486,10 +509,11 @@ sync(map_origo, map_dest) # maps need to be mapview based not tm_shape based
 Add stats to provinces and then create chloropleth maps arranging birth against death plot
 ```{r add-d-b-data-to-province-poly}
 # we add summary data on deaths and births by province to province polygons
+provinceEDH <- read_sf("../data/provinces_valid_BACKUP.geojson")
 provinceEDH <- provinceEDH %>% 
-  left_join(death_sum, by = "province") %>% 
+  left_join(death_smr, by = "province") %>% 
   rename(death_sum = n) %>% 
-  left_join(birth_sum, by = "province") %>% 
+  left_join(birth_smr, by = "province") %>% 
   rename(birth_sum = n)
 ```
 
@@ -522,13 +546,7 @@ lines <- origo$origo_line %>%
   st_set_crs(4326)
   # works just fine
 colnames(origo)
-
-# Connect the linestrings back with birthplace and deathplace data from origo and LISTfindspot 
-b_prov <- birthplace_prov[c("hd_nr", "province")] %>% st_drop_geometry()
-d_prov <- deathplace_prov[c("hd_nr", "province")] %>% st_drop_geometry()
-write.csv(b_prov[duplicated(b_prov$hd_nr),], "../output_data/checkbprovforduplicates.csv")
-write.csv(d_prov[duplicated(d_prov$hd_nr),], "../output_data/checkdprovforduplicates.csv")
-
+colnames(lines)
 
 lines <- cbind(lines, origo[,c(1:9,11:19,24)] %>% st_drop_geometry()) %>% 
   full_join(st_drop_geometry(LISTfindspot), by = c("hd_nr"="EDH.ID")) 
@@ -563,7 +581,7 @@ ggsave("../figures/orig_dist_certain.png", width = 8, height = 6)
 
 
 ### Trip length summary statistics
-```{r}
+```{r length-summary}
 # al trips
 summary(lines$length_km)
 
@@ -575,10 +593,12 @@ lines %>% filter(certainty == "certain")
 ## Distances in a Timeseries: Break distances down by century
 
 
+### Lengthening lines for time-series
 ```{r long-lines}
 
 # Make lines into a long dataset
 colnames(lines)
+names(lines)[13:18] <- c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE")
 lines_long <- lines %>%  
   #select(-origo_line) %>% 
   pivot_longer(cols = `1BCE`:`5CE`,  # take values from columns and write through True/False
@@ -674,6 +694,57 @@ lines_long %>%
             trips = n()) %>% 
   t()
 ```
+
+### Origo by destination province : where do people come from to province
+individual province origo
+```{r province-mapview}
+
+top_d_prov <- death_smr %>% 
+  top_n(6) %>%
+  pull(province)
+
+# Check attraction provinces
+lines_long %>% 
+ # filter(province == "Moesia superior") %>% 
+  # filter(province == "Dalmatia") %>% 
+   filter(province == "Dacia") %>% 
+  mapview(zcol = "century") + mapview(provinceEDH)
+ #,"Dalmatia", "Moesia superior", "Pannonia superior","Baetica","Pannonia inferior"  
+  
+
+# select 6 most popular destination province to lines
+lines_6province <- lines_long %>% 
+  #filter(province%in%top_d_prov) %>% 
+  filter(province %in% c("Germania superior","Dalmatia", "Moesia superior"
+                         ,"Pannonia superior","Baetica","Pannonia inferior"))  
+  
+lines_6province %>% 
+  #distinct(province_label_clean)
+  mapview( zcol = "province")
+
+
+```
+
+facetted province origo is NOT WORKING CORRECTLY HERE!! US EMAPVIEW INSTEAD
+```{r}
+# Facetting the map TMAPS does not match mapview(). something is wrong.
+library(tmap)
+tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
+tmap_options(check.and.fix = TRUE)
+tmap_mode(mode = "view" )
+
+tm_shape(lines_6province) +
+  tm_facets(by = "province",
+         
+            ncol=2, nrow = 3)+
+  tm_lines()+ #"century",       palette = "magma"
+  tm_shape(provinceEDH)+
+  tm_borders(col = "grey",
+             alpha = 0.7)+
+  tm_layout(main.title = "Final destination of movement",
+            legend.outside = TRUE)
+```
+
 
 ## Barplot: Cumulative Distance by century
 
@@ -779,7 +850,9 @@ EDH_origo_people <- EDH_tibble %>%
 
 # Find which of the expanded 4000 people have origo (should be ca 2277)
 EDH_origo_people <- EDH_origo_people %>% 
-  filter(!is.na(origo)) # 2288 people records in 1930 unique inscriptions
+  filter(!is.na(origo))  # 2288 people records in 1930 unique inscriptions
+
+# Sorting to see where I gained 11 people? (from 2277)
 EDH_origo_people %>% group_by(id) 
 
 # Find matching columns in lines geospatial data with EDH people
@@ -832,9 +905,46 @@ lines_people %>%
 Traveling individuals rarely state their occupation. Howeer most are soldiers so the occupation is clear. The occupation of others is driven by their social status of being senators ao slaves,..
 ## Distance and gender
 a fraction of women declare origo
-```{r}
+```{r gender-dist}
+# Summaries of distance by gender
+
+lines_people %>% 
+  st_drop_geometry() %>% 
+  group_by(gender) %>% 
+  #filter(certainty == "certain") %>% 
+  summarize(mean = mean(length_km),
+            median = median(length_km),
+            max = max(length_km))
+
+
+lines_people %>% 
+  st_drop_geometry() %>% 
+  #group_by(gender) %>% 
+  ggplot(aes(x= gender, y = length_km)) +
+  geom_jitter(alpha = 0.3, color = gender)+
+  geom_boxplot( alpha = 0.7, col="red")
+
+lines_people %>% 
+  st_drop_geometry() %>% 
+  #group_by(gender) %>% 
+  ggplot(aes(x= gender, y = length_km)) +
+  geom_violin(aes(fill = gender), alpha = 0.7,
+              show.legend = FALSE) +
+  scale_fill_manual(values = c("red", "blue", "white")) +
+  geom_jitter(aes(fill = gender), shape = 21,
+             position = position_jitterdodge(dodge.width = 0), 
+             alpha = 0.5, 
+             show.legend = FALSE) +
+  scale_fill_manual(values = c("red", "blue", "white")) +
+  theme_bw()+
+  labs(y = "Distance migrated (kms)",
+       x = "")
+
+
 # Show breakdown of travelers distances by gender
-ggplot(lines_people, aes(x = length_km))+
+lines_people %>% 
+  #filter(!is.na(gender)) %>% 
+  ggplot(aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = gender))+
   ggtitle(label = "Birth to death distances by gender")+
   theme_bw()+
@@ -845,10 +955,51 @@ ggplot(lines_people, aes(x = length_km))+
 
 ggsave("../figures/orig_dist_gender.png", width = 8, height = 6)
 ```
+### Trip length by gender
+
+```{r women-dist}
+# Breakdown of women distance
+lines_people %>% 
+  filter(gender == "female") %>% 
+  pull(length_km) %>% summary()
+
+#  Long distance travel female
+lines_people %>% 
+  filter(gender == "female") %>%
+  filter(length_km > 1000)
+  pull(length_km) %>% summary()
+
+
+# Show breakdown of travelers distances by gender
+lines_people %>% 
+  filter(gender == "female") %>% 
+  ggplot(aes(x = length_km))+
+  geom_histogram(bins = 100, aes(fill = gender), show.legend = FALSE)+
+  ggtitle(label = "Birth to death distances by women")+
+  theme_bw()+
+  # theme(legend.title=element_blank(),
+  #       legend.position = c(.85,.75))+  # works only after theme_bw()
+  labs(x = "Distance in kms",
+       y = "Traveler count")
+
+```
+```{r men-distance}
+lines_people %>% 
+  filter(gender == "male") %>% 
+  ggplot(aes(x = length_km))+
+  geom_histogram(bins = 100, fill = "blue", color = "blue", show.legend = FALSE)+
+  ggtitle(label = "Birth to death distances by men")+
+  theme_bw()+
+  # theme(legend.title=element_blank(),
+  #       legend.position = c(.85,.75))+  # works only after theme_bw()
+  labs(x = "Distance in kms",
+       y = "Traveler count")
+```
 
 ```{r eval= FALSE}
-# A stacked plot may be better to show if fraction of women increase inversely to distance, however we need a percent column calculated for each distance bin. Distance bins are variable so this is a moving target. ONce you decide on bins, follow this logic:
+# A stacked plot may be better to show if fraction of women increase inversely to distance, however we need a percent column calculated for each distance bin. Distance bins are variable so this is a moving target. Once you decide on bins, follow this logic:
 
+colnames(lines_people)
 percent_gender <- lines_people %>%
     group_by(gender, distance_interval) %>%
     mutate(percent = n/sum(gender) * 100) %>%
@@ -863,10 +1014,10 @@ ggplot(lines_people, aes(x = length_km))+
 
 ```
 
-## Distance by status
+## Distance by status FIX THIS!!!
 ```{r}
 # Pull the first primary status out of the multi-valued attribute
-status <- str_split_fixed(lines_people$status, ";", n=3) %>% 
+status <- str_split_fixed(lines_people$status.y, ";", n=3) %>% 
   as.data.frame()
 
 # Tie status back to lines
@@ -875,7 +1026,7 @@ colnames(lines_status)
 
 # Clean up mising values and special characters
 lines_status <- lines_status %>% 
-  filter(!is.na(status)) %>% 
+  filter(!is.na(status.y)) %>% 
   mutate(status_clean = str_replace_all(string = status.V1, pattern = "\\?", replacement = "")) 
 
 # Plot status by distance
@@ -930,7 +1081,7 @@ ggsave("../figures/Status_origo.png", width = 8, height = 6)
 
 
 
-## Oddities and deeper explorations
+## Checking the oddities and deeper explorations
 ```{r duplicate-prov-records}
 
 # What are the unique provinces?
@@ -966,7 +1117,7 @@ birthplace_prov %>%
   filter(province == "Moesia Superior"  ) %>% 
   select(province, origo_clean, pleiades_title) %>% 
   count(pleiades_title) %>% 
-  arrange(desc(n))  
+  #arrange(desc(n))  
   mapview(zcol = "n", cex = "n", label = "pleiades_title")
 
   
@@ -975,7 +1126,7 @@ birthplace_prov %>%
   filter(province == "Germania Inferior"  ) %>% 
   select(province, origo_clean, pleiades_title) %>% 
   count(pleiades_title) %>% 
-  arrange(desc(n))  
+  #arrange(desc(n))  
   mapview(zcol = "n", cex = "n", label = "pleiades_title")
 
 ```
@@ -1004,13 +1155,56 @@ birthplace_prov %>%
 
 ```
 
-In a single inscription from Viminacium (near modern Kostolac), over 40 individuals (soldiers and others) are mentioned in a list below dedication. So HD032316 should allocate 40 people to Moesia Superior as a deathplace, and maybe also birthplace (many are from Scupi and Remesiana, others from Salona, Montana and others). All are military with various roles mentioned, such as interpreter, guardian of arms (custos armorum), signifer, imaginifer, etc.
+In a single inscription from Viminacium (near modern Kostolac), over 40 individuals (soldiers and others) are mentioned in a list below dedication. So HD032316 should allocate 40 people to Moesia Superior as a deathplace, and maybe also birthplace (many are from Scu    pi and Remesiana, others from Salona, Montana and others). All are military with various roles mentioned, such as interpreter, guardian of arms (custos armorum), signifer, imaginifer, etc.
 The signatories need not have died here, they are merely named as contributors to the dedication. So reading Viminacium as a deathplace is an exaggeration, however, they probably lived nearby.
 
 Roma is low in the number of birth and death provinces as its name overlaps with Lazio et Histria. It is mentioned 33 and 104 times in the respective datasets. Except when the coordinates place an individual directly in Rome, it often hides behind Lazio (which comes alphabetically first) as they overlap spatially.
-
+## Rome
 ```{r lazio-Rome}
-# What is the situation with Rome and Lazio et Histria?
+# How many inscriptions in LIRE were found at  Rome? 
+LIRE %>% 
+  filter(findspot_ancient_clean == "Roma") # 3651
+
+LIST %>% 
+  filter(findspot_ancient_clean == "Roma") # 4357
+
+LIRE %>% 
+  group_by(findspot_ancient_clean) %>% 
+  tally() %>% arrange(desc(n)) # 3651 
+
+LIST %>%
+  st_drop_geometry() %>% 
+  group_by(findspot_ancient_clean) %>% 
+  tally() %>% arrange(desc(n)) # 4357 
+
+deathplace %>%
+  st_drop_geometry() %>% 
+  group_by(province) %>%  # check for most common attractor province
+  tally() %>% arrange(desc(n)) 
+
+deathplace %>%
+  st_drop_geometry() %>% 
+  #group_by(province) %>%  # check for most common attractor province
+  group_by(findspot_ancient_clean) %>% # province and city
+  tally() %>% arrange(desc(n)) 
+
+colnames(lines_people)
+lines_people %>% 
+  st_drop_geometry() %>% 
+  filter(findspot_ancient_clean == "Roma") %>% 
+  pull(status.y)  %>% table()
+
+status_rome %>% 
+  cbind(combined = c(status$V1,status$V2,status$V3)) %>% 
+  filter(combined != "") %>% 
+  mutate(combined_clean = str_replace_all(string = combined, pattern = "\\?", replacement = "")) %>% 
+  mutate(combined_clean = str_replace_all(string = combined_clean, pattern = "^ ", replacement = "")) %>% 
+  count(combined_clean, sort=TRUE) -> status_rome_counts
+
+```
+
+```{r}
+# What is the situation with Rome and Lazio et Histria being not so frequent birth or deathplace?
 birthplace_prov %>% 
    distinct(province) %>% 
    pull(province) %>% 
@@ -1027,14 +1221,16 @@ birthplace_prov %>%
   filter(pleiades_title== "Roma") %>%
   distinct(id)
 
-
-# TOtal inscriptions from Rome
-
-LIST %>% 
+deathplace %>% 
   st_drop_geometry() %>% 
-  filter(findspot_ancient_clean == "Roma") %>% 
-  select(matches("findspot|province|text_inter"))
+  filter(findspot_ancient_clean== "Roma") %>%
+  distinct(id)
+
+lines_long%>% 
+  filter(findspot_ancient_clean== "Roma") %>%
+  mapview()
 ```
+
 There are 32 duplicates where pleiades_title is "Roma", as the spatial origo point falls both in the polygon of Rome and Latium et Campania
 There are 60 total emigrants from Latium et Campania, of whom 32 are from Rome proper, 3 from Capua and Teanum Sidicum , 2 from Praeneste, Campania and Ostia.
 There are 33 migrants from the province "Roma", where 32 are from Rome proper and 1 from Forum Augusti. However, the second dataset is clearly a duplicate, caused by the overlap of the point with two polygons - one of Latium and another of Rome. If we look at *distinct* id that share the pleiades_title 'Roma', we get 32 discrete/ unique individuals.
@@ -1086,3 +1282,66 @@ LIST %>%
   filter(EDH.ID%in%ISeverus) %>% 
   mapview() + mapview(provinceEDH)
 ```
+
+### All findspots versus origo findspots
+```{r}
+# Number of unique textual findspot placenames in LIST
+length(unique(LIST$findspot_ancient_clean))  # 2242
+
+# Number of coarse textual findspot placename variants in LIST
+length(unique(LIST$findspot_clean)) # 20053
+
+# Number of unique geocoded placenames in LIST
+length(unique(LIST$Latitude)) #21172
+length(unique(LIST$Longitude)) #21198
+length(unique(LIST$geometry)) # 21277
+
+class(LIST)
+
+# Plot LIST
+LIST %>% 
+  dplyr::filter(!is.na(Latitude)) %>% 
+  leaflet() %>% 
+  addProviderTiles("Stamen.Watercolor") %>% 
+  add
+
+```
+
+###  Findspots
+```{r}
+LIST %>% 
+  st_drop_geometry() %>% 
+  select(matches("ID|geo|findspot|place")) %>% 
+  #distinct(place) %>% # 22 691 unique places
+  distinct(findspot_clean) #%>% 
+  pull()
+  
+  LIST %>% 
+    st_drop_geometry() %>% 
+    filter(str_detect(findspot_clean, regex("Forum Vetus",ignore_case = TRUE))) %>% 
+    select(EDH.ID, findspot_clean, findspot_ancient_clean)
+  
+  # Isthm and 
+  LIST %>% 
+    st_drop_geometry() %>% 
+    filter(str_detect(findspot_clean, regex("brunnen",ignore_case = TRUE))) %>% 
+    select(EDH.ID, findspot_clean, findspot_ancient_clean)
+```
+
+
+## Looking into Freedmen
+
+```{r}
+colnames(origo)
+
+```
+
+
+
+```{r}
+```
+
+
+```{r}
+```
+
