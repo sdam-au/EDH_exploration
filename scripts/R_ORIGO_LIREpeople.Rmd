@@ -130,7 +130,7 @@ Out of these 2648 locations there are 673 unique geocoded placenames.
 in py_geocode_origo
 The json output has 2648 rows just like there are people with origo in the EDH dataset, however only 676 unique origo ( presumed birthplace) locations have been successfully geocoded, adn three of those lack lat/long of the findspot (presumed deathplace)
 
-```{r}
+```{r eval = FALSE}
 # geoorigo <- jsonlite::fromJSON("https://sciencedata.dk/public/b6b6afdb969d378b70929e86e58ad975/EDH_origo_geo_2021-08-24.json")
 
 # all 92427 people records with all attributes incl origo
@@ -641,11 +641,11 @@ Look at how after 20 records or so there are more than one status, separated by 
 
 ## What is the ratio of different statuses, e.g. slave vs freedman in EDH_people
 
-```{r EDH-people-status}
+```{r LIRE-people-status-calc}
 # Who has declared status?
 EDH_people %>% 
   filter(!is.na(status))  # 24,632 people have
-
+length(which(!is.na(EDH_people$status)))
 # SPlit the multiple statuses into separate columns
 status <- EDH_people %>% 
   filter(!is.na(status)) %>% 
@@ -674,38 +674,69 @@ status_one <- status %>%
   group_by(V1) %>% 
   count(V1) %>% arrange(desc(n))
 ```
-
-```{r}
+## Overview status LIRE ggplot
+```{r ggplot-LIRE-status}
 status_counts %>% 
+  slice(1:8) %>% 
   mutate(combined_clean = reorder(combined_clean, n)) %>% 
   ggplot(aes(y=combined_clean, x=n, fill=combined_clean)) +
   geom_bar(width=0.8, stat="identity") +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))+
+  #scale_fill_grey()+
   coord_cartesian(xlim=c(0,10000)) +
-  labs(x = "Number of instances", y = "Status category", title = "Overview of status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(EDH_tibble), "inscriptions"))) +
-  geom_label(aes(label= n)) +
+  labs(x = "Number of instances", 
+       y = "", 
+       title = "Status among LIRE people", subtitle = ggtitle(paste("n =", length(which(!is.na(EDH_people$status))), "status declarations"))) +
+  geom_label(aes(label= n), fill = "white") +
   theme_linedraw(base_size = 13) +
   theme(legend.position = "none")
 
-#ggsave("../figures/Status_overview.jpg", width = 12, height = 8) 
-#ggsave("../figures/Status_overview.png", width = 12, height = 8) 
+#ggsave("../figures/Status_LIREcol.tiff", width = 12, height = 8) 
+#ggsave("../figures/Status_LIREbw.png", width = 12, height = 8) 
 ```
-### log version
+### log version LIRE
 ```{r}
-status_counts %>% 
+LIRE_statuslog_clr <- status_counts %>% 
+  slice(1:8) %>% 
   mutate(log=round(log10(n),1)) %>% 
   mutate(combined_clean = reorder(combined_clean, log)) %>% 
   ggplot(aes(y=combined_clean, x=log, fill=combined_clean)) +
   geom_bar(width=0.8, stat="identity") +
-  coord_cartesian(xlim=c(0,5)) +
-  labs(x = "Number of instances (log10)", y = "Status category", title = "Status references in the EDH dataset", subtitle = ggtitle(paste("n =", nrow(EDH_people), "people in inscriptions"))) +
-  geom_label(aes(label= n)) +
+ # scale_fill_grey()+
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))+
+  coord_cartesian(xlim=c(0,4)) +
+  labs(x = "Number of instances (log10)", 
+       y = "", 
+       title = "Status among LIRE people", 
+       subtitle = ggtitle(paste("n =", length(which(!is.na(EDH_people$status))), "status declarations"))) +
   theme_linedraw(base_size = 13) +
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  geom_label(aes(label= n), fill = "white") 
 
-ggsave("../figures/Status_overviewlog.png", width = 8, height = 6) 
+ggsave("../figures/Status_LIRElog_col.tiff", width = 8, height = 6) 
+
+LIRE_statuslog <- status_counts %>% 
+  slice(1:8) %>% 
+  mutate(log=round(log10(n),1)) %>% 
+  mutate(combined_clean = reorder(combined_clean, log)) %>% 
+  ggplot(aes(y=combined_clean, x=log, fill=combined_clean)) +
+  geom_bar(width=0.8, stat="identity") +
+  scale_fill_grey()+
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))+
+  coord_cartesian(xlim=c(0,4)) +
+  labs(x = "Number of instances (log10)", 
+       y = "", 
+       title = "Status among LIRE people", 
+       subtitle = ggtitle(paste("n =", length(which(!is.na(EDH_people$status))), "status declarations"))) +
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none")+
+  geom_label(aes(label= n), fill = "white")
+
+ggsave("../figures/Status_LIRElog_bw.tiff", width = 8, height = 6) 
+ggsave("../figures/Status_LIRElog_bw.png", width = 8, height = 6) 
 
 ```
-##  Status in origo people
+##  Status in origo people (USE for origo paper)
 ```{r origo-people-status}
 # Who has declared status in 2277 origo?
 origo_people <- origo %>% 
@@ -741,43 +772,114 @@ status_one <- status %>%
   select(V1) %>% 
   mutate(status = str_replace_all(string = V1, pattern = "\\?", replacement = "")) %>% 
   group_by(status) %>% 
-  count(status, sort = TRUE) #%>% arrange(desc(n))
-
+  count(status) %>% #, sort = TRUE) #%>% 
+  arrange(n)
 status_one
 ```
 
-### log version
+### ORIGO STATUS log version ggplot
 ```{r}
-# with multiple statuses all collated 1277 soldiers
+# with multiple statuses all collated 1277 soldiers, greyscale follows n
 status_counts %>% 
   mutate(log=round(log10(n),1)) %>% 
   mutate(combined_clean = reorder(combined_clean, log)) %>% 
   ggplot(aes(y=combined_clean, x=log, fill=combined_clean)) +
   geom_bar(width=0.8, stat="identity") +
-  coord_cartesian(xlim=c(0,5)) +
+  scale_fill_grey()+
+  coord_cartesian(xlim=c(0,3.5)) +
   labs(x = "Number of instances (log10)",
-       y = "Status category",
-       title = "Status references in the origo dataset",
-    subtitle = ggtitle(paste("n =", nrow(status), "people in inscriptions"))) +
-  geom_label(aes(label= n)) +
+       y = "",
+       title = "Status among people with origo",
+    subtitle = ggtitle(paste("n =", nrow(status), "people"))) +
+  geom_label(aes(label= n),colour = "black" ,fill = "white") +
   theme_linedraw(base_size = 13) +
   theme(legend.position = "none")
 
-# single status per person (last, highest) 1264 soldiers
-status_one %>% 
+ggsave("../figures/Status_origo1277_col.png", width = 8, height = 6)
+
+# single status per person (last, highest) 1264 soldiers, greysale follows alphabetically
+origo_status_log <- status_one %>% 
   mutate(log =round(log10(n), 1)) %>% 
-  mutate(status = reorder(status , n)) %>% 
-  ggplot(aes(y=status, x=log, fill=status)) +
-  geom_bar(width=0.8, stat="identity") +
-  coord_cartesian(xlim=c(0,5)) +
+  mutate(status = factor(status)) %>% 
+  #mutate(status = fct_reorder(status, n)) %>% 
+  ggplot(aes(y = status, x =log, fill = status)) +
+  geom_col(width=0.8, 
+         #  fill = "grey",
+           show.legend = FALSE) + #, stat = "identity"
+  scale_y_discrete(limits = status_one$status,
+                    labels = function(x) str_wrap(x, width = 20))+
+  scale_fill_grey()+
+  coord_cartesian(xlim=c(0,3.5)) +
   labs(x = "Number of instances (log10)", 
-       y = "Status category", 
-       title = "Status references in the origo dataset", 
-       subtitle = ggtitle(paste("n =", nrow(origo_people), "people in inscriptions"))) +
-  geom_label(aes(label= n)) +
+       y = "", 
+       title = "Status among people with origo", 
+       subtitle = ggtitle(paste("n =", nrow(status), "status declarations")))  +
   theme_linedraw(base_size = 13) +
-  theme(legend.position = "none")
-ggsave("../figures/Status_overviewlog.png", width = 8, height = 6) 
+  theme(legend.position = "none") +
+  geom_label(aes(label= n),colour = "black" ,fill = "white")
+
+# single status per person (last, highest) 1264 soldiers, full grey
+origo_status_log <- status_one %>% 
+  mutate(log =round(log10(n), 1)) %>% 
+  mutate(status = factor(status)) %>% 
+  #mutate(status = fct_reorder(status, n)) %>% 
+  ggplot(aes(y = status, x =log)) +
+  geom_col(width=0.8, 
+           #color= "black",
+           fill = "grey",
+           show.legend = FALSE) + #, stat = "identity"
+  scale_y_discrete(limits = status_one$status,
+                    labels = function(x) str_wrap(x, width = 20))+
+  #scale_fill_grey()+
+  coord_cartesian(xlim=c(0,3.5)) +
+  labs(x = "Number of instances (log10)", 
+       y = "", 
+       title = "Status among people with origo", 
+       subtitle = ggtitle(paste("n =", nrow(status), "status declarations")))  +
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none") +
+  geom_label(aes(label= n),colour = "black" ,fill = "white")
+
+ggsave("../figures/Status_origo1264_bw.png", width = 8, height = 6) 
+
+origo_status_clrlog <- status_one %>% 
+  mutate(log =round(log10(n), 1)) %>% 
+  mutate(status = factor(status)) %>% 
+  #mutate(status = fct_reorder(status, n)) %>% 
+  ggplot(aes(y = status, x =log,fill = status)) +
+  geom_col(width=0.8, 
+           #fill = status,
+           show.legend = FALSE) + #, stat = "identity"
+  scale_y_discrete(limits = status_one$status,
+                    labels = function(x) str_wrap(x, width = 20))+
+  #scale_fill_grey()+
+  coord_cartesian(xlim=c(0,3.5)) +
+  labs(x = "Number of instances (log10)", 
+       y = "", 
+       title = "Status among people with origo", 
+       subtitle = ggtitle(paste("n =", nrow(status), "status declarations")))  +
+  theme_linedraw(base_size = 13) +
+  theme(legend.position = "none") +
+  geom_label(aes(label= n),colour = "black" ,fill = "white")
+
+
+```
+
+### COmbine  lire with origo grids
+
+```{r}
+# COmbine BW versions
+library(gridExtra)
+plist <- list(origo_status_log, LIRE_statuslog)
+grid.arrange(grobs = plist, ncol = 2)
+ggsave("../figures/Status_combo_bw.png", arrangeGrob(grobs = plist, ncol=2), width = 16, height = 6) 
+
+
+# Combine COLOR versions
+library(gridExtra)
+plist <- list(origo_status_clrlog, LIRE_statuslog_clr)
+grid.arrange(grobs = plist, ncol = 2)
+ggsave("../figures/Status_combo_col.png", arrangeGrob(grobs = plist, ncol=2), width = 16, height = 6) 
 
 ```
 
@@ -903,446 +1005,6 @@ summary(EDH_age$total_age)
 ```{r}
 length(na.omit(EDH_age$total_age))/(nrow(EDH_age)/100)
 ```
-
-
-
-
-# Occupation
-## What are the names of unique values in the 'occupation' attribute?
-```{r}
-EDH_people %>% 
-  dplyr::filter(occupation == "data available") %>% 
-  select()
-```
-Unfortunately, ant other details about the occupation are not provided.
-
-
-## Special focus - Funerary inscriptions
-
-```{r}
-#merging of age dataset with other attributes from tibble
-
-EDH_fun_age <- left_join(EDH_tibble, EDH_age, by = c("id" = "id"))
-
-```
-
-
-
-## Age
-
-```{r}
-EDH_fun %>% 
-  filter(type_of_inscription_clean == "epitaph") -> epitaph
-```
-
-How many percent of people on funerary inscriptions state their age on inscriptions
-
-```{r}
-length(na.omit(epitaph$total_age))/(nrow(epitaph)/100)
-```
-### What is the age of people on funerary inscriptions by province
-```{r, fig.height=8}
-epitaph %>% 
-  dplyr::select(total_age, province_label_clean) %>% 
-  count(total_age, province_label_clean, sort=TRUE) %>% 
-  ggplot(aes(x=total_age, y= fct_rev(province_label_clean))) + geom_point(alpha=0.5, color="darkblue") +
-  theme_minimal()
-
-ggsave("../figures/Age_years_provinces.png", width = 8, height = 8) 
-```
-
-I would like to see the inscription claiming 200 years of age. A typo? An ambitious guess?
-
-### What is the average age of people on funerary inscriptions by province
-
-```{r}
-#install.packages("psych")
-library(psych)
-
-psych::describeBy(epitaph$total_age, group = epitaph$province_label_clean, mat = TRUE, digits = 2) -> age_provinces
-head(age_provinces)
-```
-
-### Average age by provinces (All inscriptions)
-```{r, fig.height=12}
-age_provinces %>% 
-  filter(n>0) %>% 
-  mutate(group1 = reorder(group1, mean)) %>%  
-  ggplot(aes(y=group1, x=mean)) +
-  geom_col(color="white", fill="blue", width=0.8, stat="identity") +
-  #coord_cartesian(xlim=c(0,80)) +
-  theme_minimal() +
-  theme(text = element_text(size=16)) +
-  labs(y="Roman province", x="Years", title= "Average age of people on inscriptions in the EDH database by province", subtitle = "n= 7993 people")+ 
-  #geom_label(aes(label= mean)) +
-  geom_label(aes(label = mean), colour = "black", fontface = "bold", hjust = -0.1) 
-  
-ggsave("../figures/Age_average_years_provinces.png", width = 12, height = 12) 
-```
-
-How do you know it is 7993 records?
-
-### ### Average age by provinces, with more than 100 inscriptions containing age per province
-```{r, fig.height=12}
-age_provinces %>% 
-  filter(n>100) %>% 
-  mutate(group1 = reorder(group1, mean)) %>%  
-  ggplot(aes(y=group1, x=mean)) +
-  geom_col(color="white", fill="blue", width=0.8, stat="identity") +
-  #coord_cartesian(xlim=c(0,80)) +
-  theme_minimal() +
-  theme(text = element_text(size=16)) +
-  labs(y="Roman province ", x="Years", title= "Average age of people on inscriptions in the EDH database by province with more than 100 inscriptions stating age", subtitle = "n= 7993 people")+ 
-  #geom_label(aes(label= mean)) +
-  geom_label(aes(label = mean), colour = "black", fontface = "bold", hjust = -0.1)
-  
-ggsave("../figures/Age_average_years_provinces_100plus_inscr.png", width = 12, height = 12) 
-```
-
-
-### Inscriptions with age by provinces
-```{r, fig.height=12}
-age_provinces %>% 
-  filter(n>0) %>% 
-  mutate(group1 = reorder(group1, n)) %>%  
-  ggplot(aes(y=group1, x=n)) +
-  geom_col(color="white", fill="purple", width=0.8, stat="identity") +
-  #coord_cartesian(xlim=c(0,80)) +
-  theme_minimal() +
-  theme(text = element_text(size=16)) +
-  labs(y="Roman province", x="n", title= "Instances of age information in the EDH database by province", subtitle = "n= 7993 people")+ 
-  #geom_text(aes(label= n),hjust = -0.4) +
-  geom_label(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4) 
-
-ggsave("../figures/Age_info_provinces.png", width = 12, height = 12) 
-```
-
-### Inscriptions by age groups
-
-```{r}
-EDH_age<- EDH_age %>%
-  mutate(agegroup = case_when(total_age < 3 ~  "0-2.99",
-                              total_age < 15 ~ "3-14.99",
-                              total_age < 30 ~ "15-29.99",
-                              total_age < 40 ~ "30-39.99",
-                              total_age < 60 ~ "40-59.99",
-                              total_age > 60 ~ "over 60"))
-
-EDH_age$agegroup <- factor(EDH_age$agegroup, levels = c("0-2.99", "3-14.99","15-29.99", "30-39.99", "40-59.99","over 60"))  
-```
-
-#### test works
-```{r}
-summary(EDH_age$total_age)
-summary(EDH_age$agegroup)
-```
-
-
-```{r}
-EDH_age %>% 
-  filter(agegroup != "NA") %>%
-  #count(agegroup, sort = TRUE) %>%
-  #mutate(agegroup_sorted = reorder(agegroup, n)) %>% 
-  ggplot() +
-  geom_bar(mapping = aes(x = agegroup, fill = agegroup))+
-  labs(x = "Age group (years)", y = "Number of individuals", title = "Representation of age groups on funerary inscriptions (EDH dataset)", subtitle = ggtitle(paste("n =", nrow(filter(EDH_age, agegroup != "NA")), "inscriptions")))+
-  theme_minimal()
-  #+ geom_label(aes(label = agegroup), colour = "black", fontface = "bold", hjust = -0.4) +
-
-
-  
-ggsave("../figures/Age_groups_epitaphs.png", width = 12, height = 8) 
-```
-### Children younger than 10
-
-```{r}
-EDH_fun<- EDH_fun %>% 
-  mutate(age10 = ifelse(total_age < 10, "under10", "over10"))
-```
-
-#### Province
-```{r, fig.height=14, fig.width=10}
-EDH_fun %>% 
-  count(age10, province_label_clean) %>% 
-  ggplot(aes(fill=age10, y=province_label_clean, x=n)) +
-  geom_bar(position="fill", stat="identity") +
-  theme_minimal() +
-  #theme(text = element_text(size=16)) +
-  labs(y="Roman province", x="n", title= "Ratio of age children under 10 years on inscriptions per province") 
-  #geom_text(aes(label= n),hjust = -0.4) 
-  #geom_label(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4) 
-
-```
-
-```{r}
-EDH_age10<- EDH_fun %>% 
-  count(age10, province_label_clean, sort=F) %>% 
-  spread(key=age10, value=n) 
-
-EDH_under10<- EDH_age10 %>% 
-  mutate(total = rowSums(EDH_age10[2:4], na.rm=TRUE)) %>% 
-  mutate(under10_ratio = under10 / (total/100)) %>% 
-  mutate(over10_ratio = over10 / (total/100)) %>% 
-  mutate(age_stated = (over10+under10) / (total/100))
-
-
-EDH_under10 
-```
-```{r, fig.height=14, fig.width=10}
-EDH_under10 %>%
-  dplyr::select(province_label_clean, over10_ratio) %>% 
-  #sort(over10_ratio, decreasing = TRUE, na.last = TRUE) %>% 
-  ggplot(aes(y=province_label_clean, x=over10_ratio)) +
-  geom_bar(stat="identity", position = "dodge") +
-  theme_minimal() +
-  #theme(text = element_text(size=16)) +
-  labs(y="Roman province", x="%", title= "Ratio of children under 10 years on inscriptions per province") 
-  #geom_text(aes(label= n),hjust = -0.4) 
-  #geom_label(aes(label = n), colour = "black", fontface = "bold", hjust = -0.4)
-```
-
-### Rounding of age on inscriptions
-```{r}
-EDH_fun %>% 
-  dplyr::select(total_age) %>% 
-  filter(total_age == str_subset(total_age, "5$|0$")) -> rounded_age
-
-
-all_ages <- as.data.frame(na.omit(EDH_fun$total_age))
-nrow(rounded_age)/(nrow(all_ages)/100)
-```
-
-```{r}
-rounded_age %>% 
-  count(total_age)
-```
-### Non-rounded ages
-
-```{r, fig.width=10}
-all_ages %>% 
-  count(`na.omit(EDH_fun$total_age)`) %>% 
-  mutate(total_age =`na.omit(EDH_fun$total_age)`) %>% 
-  ggplot(aes(x=total_age, y =n, colour=-n)) +
-  geom_point(alpha=0.5) +
-  geom_smooth() +
-  geom_vline(xintercept = 10, linetype="dotted", 
-               color = "green", size=0.5) +
-  geom_vline(xintercept = 30, linetype="dotted", 
-                color = "blue", size=0.5) +
-  geom_vline(xintercept = 50, linetype="dotted", 
-                color = "red", size=0.5) +
-  geom_vline(xintercept = 70, linetype="dotted", 
-                color = "brown", size=0.5)
-  
-```
-### Population pyramid in funerary inscriptions
-
-
-Adapted from https://klein.uk/teaching/viz/datavis-pyramids/
-
-```{r}
-EDH_fun %>% 
-  dplyr::select(gender, total_age) %>% 
-  na.omit(gender) %>% 
-  na.omit(total_age)  %>% 
-  mutate(gender = str_replace(gender, "M\\?", "male")) %>% 
-  mutate(gender = str_replace(gender, "F\\?", "female")) -> population_age
-
-## cut the age variable into age groups with 5-year intervals
-population_age$age_cut <- cut(population_age$total_age, breaks = seq(0, 200, 5), right = FALSE) 
-population_age$population <- 1 ## each sampled respondent represents 10 individuals
-
-population_age <- population_age %>% 
-  mutate(age = str_replace(age_cut, "\\[", "")) %>% 
-  mutate(age = str_replace(age, "\\)", "")) %>% 
-  mutate(age = str_replace(age, "\\,", " - ")) 
-
-labels <- levels(population_age$age_cut) %>% 
-  stringr::str_replace_all(.,
-                                           c("\\[" = "",
-                                             "\\)" = "",
-                                             "\\," = " - "))
-  
-# Trying if setting age to factor will help with sorting
-class(population_age$age)
-population_age$age <- factor(population_age$age, levels=c(labels))
-
-# As a back up: create a new column from desired age intervals that lists the group number to be used for sorting
-population_age$order <- findInterval(population_age$total_age, c(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100, 500))
-
-
-sort(unique(population_age$order))
-head(population_age)
-population_age %>% 
-  filter(order == 4)
-
-## aggregate the data by gender and age group
-population_age <- aggregate(formula = population ~ gender + age + order, data = population_age, FUN = sum)
-
-## sort data by first by gender, then by age groups using *order*
-population_age <- with(population_age, population_age[order(order,gender),])
-
-#labels
-xabels<- c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85-89", "90-94", "95-99", "100+")
-# labels_df <- as.data.frame(labels)
-# breaks = seq(0, 160, 5)
-
-# AS: the original is poorly annotated. None of the lines of code specified WHY it is run. 
-# Errors or problematic parts not clearly marked
-
-  
-
-population_age <- population_age[,c("age","order", "gender","population")]
-
-population_age$population <- ifelse(population_age$gender == "male", -1*population_age$population, population_age$population)
-
-# It is incredible how the ggplot sort lexicographically despite the factor!!
-
-
-population_age$orderedage <- reorder(population_age$age, sort(population_age$order)) #https://kohske.wordpress.com/2010/12/29/faq-how-to-order-the-factor-variables-in-ggplot2/
-
-
-pyramid_age <- ggplot(population_age, aes(x = orderedage, y = population, fill = gender)) + 
-  geom_bar(aes(order), data = subset(population_age, gender == "female"), stat = "identity") +
-  geom_bar(aes(order), data = subset(population_age, gender == "male"), stat = "identity") + 
-  #scale_y_continuous(labels = c("250", "0", "250")) + 
-  xlab("age groups")+
-  scale_x_discrete(labels = xabels)+  # Still does not show!! But no Error. jeez.
-  coord_flip()
-pyramid_age
-```
-
-#### Adela Different and Working (for change) Alternative
-```{r}
-EDH_fun %>% 
-  dplyr::select(gender, total_age) %>% 
-  na.omit(gender) %>% 
-  na.omit(total_age)  %>% 
-  mutate(gender = str_replace(gender, "M\\?", "male")) %>% 
-  mutate(gender = str_replace(gender, "F\\?", "female")) -> population_age
-
-
-# The column plotted on x (and flipped) needs to be a factor, but the example above is not working, 
-# so lets' cut and label data with data.table library
-library(data.table)
-
-agebreaks <- c(0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100, 500)
-agelabels <- c("0-4","5-9","10-14","15-19","20-24","25-29","30-34",
-               "35-39","40-44","45-49","50-54","55-59","60-64","65-69",
-               "70-74","75-79","80-84","85-89","90-94", "95-99","100+")
-## cut the age variable into age groups with 5-year intervals
-
-setDT(population_age)[ , agegroups := cut(total_age, 
-                                breaks = agebreaks, 
-                                right = FALSE, 
-                                labels = agelabels)]
-
-head(population_age)
-
-population_age$population <- 1 ## each sampled respondent represents 10 individuals
-
-# aggregate the data by gender and age group
-population_age <- aggregate(formula = population ~ gender + agegroups, data = population_age, FUN = sum)
-
-## sort data by first by gender, then by age groups
-population_age <- with(population_age, population_age[order(agegroups,gender),])
-
-
-population_age <- population_age[,c("agegroups","gender","population")]
-
-population_age$population <- ifelse(population_age$gender == "male", -1*population_age$population, population_age$population)
-
-pyramid_age <- ggplot(population_age, aes(x = agegroups, y = population, fill = gender)) + 
-  geom_bar(data = subset(population_age, gender == "female"), stat = "identity") +
-  geom_bar(data = subset(population_age, gender == "male"), stat = "identity") + 
-  theme_minimal() +
-  #scale_y_continuous(labels = c("250", "0", "250")) + 
-  coord_flip()
-pyramid_age
-
-ggsave("../figures/Age_pyramid.jpg", width = 8, height = 8)
-```
-
-
-### Average age by individual years 
-
-Using not before and not after date separately.
-
-```{r}
-describeBy(epitaph$total_age, group = epitaph$not_before, mat = TRUE, digits = 2) -> age_not_before
-
-describeBy(epitaph$total_age, group = epitaph$not_after, mat = TRUE, digits = 2) -> age_not_after
-```
-
-### When (which years) do people state their age on funerary inscriptions
-
-```{r}
-age_not_bf_plot<- age_not_before %>% 
-  ggplot(aes(x=group1, y=n)) +
-  geom_point() +
-  geom_vline(xintercept = 1, linetype="dotted", 
-                color = "green", size=0.5) +
-  geom_vline(xintercept = 100, linetype="dotted", 
-                color = "blue", size=0.5) +
-  geom_vline(xintercept = 200, linetype="dotted", 
-                color = "red", size=0.5)
-```
-
-
-```{r}
-age_not_aft_plot<- age_not_after %>% 
-  ggplot(aes(x=group1, y=n)) +
-  geom_point() +
-  geom_vline(xintercept = 1, linetype="dotted", 
-                color = "green", size=0.5) +
-  geom_vline(xintercept = 100, linetype="dotted", 
-                color = "blue", size=0.5) +
-  geom_vline(xintercept = 200, linetype="dotted", 
-                color = "red", size=0.5)
-```
-Commentary: People state their age in the second century the most!
-
-### What is the average age of people on inscriptions in time
-```{r}
-age_not_before %>% 
-  filter(!is.na(mean)) %>% 
-  ggplot(aes(x=as.numeric(group1), y=as.numeric(mean))) +
-  geom_point() +
-  geom_smooth() +
-  geom_vline(xintercept = 0, linetype="dotted", 
-               color = "green", size=0.5) +
-  geom_vline(xintercept = 100, linetype="dotted", 
-                color = "blue", size=0.5) +
-  geom_vline(xintercept = 200, linetype="dotted", 
-                color = "red", size=0.5) +
-  geom_vline(xintercept = 300, linetype="dotted", 
-                color = "brown", size=0.5)
-
-
-
-```
-
-
-```{r}
-age_not_after %>% 
-  filter(!is.na(mean)) %>% 
-  ggplot(aes(x=as.numeric(group1), y=as.numeric(mean))) +
-  geom_point() +
-  geom_smooth() +
-  geom_vline(xintercept = 0, linetype="dotted", 
-               color = "green", size=0.5) +
-  geom_vline(xintercept = 100, linetype="dotted", 
-                color = "blue", size=0.5) +
-  geom_vline(xintercept = 200, linetype="dotted", 
-                color = "red", size=0.5) +
-  geom_vline(xintercept = 300, linetype="dotted", 
-                color = "brown", size=0.5)
-
-```
-
-
-### One-offs
-
 
 
 ## Totally random - Augustales

@@ -34,6 +34,12 @@ We need the following inputs for the analysis:
 # Origo parquet of linestrings is drawn from the pleiades point geocoded on the basis of origo by Mathias and Vojtech travelling towards EDH_point generated from findspot, produced by EDH editors.
 origo <- st_read_parquet("../data/origo_geo.parquet")
 
+# how many are manually vs automatically geocoded?
+origo %>% 
+  st_drop_geometry() %>% 
+  filter(!is.na(pleiades_title_list)) #675 auto
+  filter(is.na(pleiades_title_list)) #1602 manual
+
 # Pleiades provinces data have overlapping variants without description
 romanEmpire <- read_sf("../data/pleiades_regions.geojson") # not great as they collate all province changes over time without identities
 
@@ -268,12 +274,25 @@ deathplace_cntime <- deathplace_long %>%
   count(findspot_ancient_clean) %>% 
   mutate(count_log = log10(n))
 
+glimpse(deathplace_cntime)
+class(deathplace_cntime$n)
+deathplace_cntime$cat <- cut(deathplace_cntime$n,
+  breaks = c(0, 10, 100, 200),
+  labels = FALSE
+)
 
-deathtime_map <- tm_shape(deathplace_cntime) +
+deathtime_map <- 
+  tm_shape(deathplace_cntime) +
   tm_facets(by = "century",
            ncol=2, nrow = 3
             )+
-  tm_dots(size = "n")+
+  tm_dots(size = "n",
+         #style = "equal",
+         # style = "fixed", breaks=c(1,10,50,100,200)
+          #style = "log10"
+          #style = "jenks"
+       #  legend.format = list(fun = function(x) {c(0, 10, 100, 200)[x]})
+          ) +
   tm_shape(provinceEDH$geometry)+
   tm_borders(alpha = 0.7)+
   tm_layout(main.title = "Deathplaces through centuries",
@@ -302,17 +321,20 @@ birthtime_map <- tm_shape(birthplace_cntime) +
   tm_facets(by = "century",
            ncol=2, nrow = 3
             )+
-  tm_dots(size = "n")+
+  tm_dots(size = "n", 
+          #style = "equal"
+          #style = "jenks"
+          #style = "fixed", breaks = c(1,10,100)
+          )+
   tm_shape(provinceEDH$geometry)+
-  tm_borders(alpha = 0.7)+
+  tm_borders(alpha = 0.5, 
+             col = "lightgrey")+
   tm_layout(main.title = "Birthplaces through centuries", 
             legend.outside = F)
   
 birthtime_map
 
-tmap_save(birthtime_map, "../figures/birthplacemap.png", width = 15, height = 21, units = "cm")
-
-#tmap_save(birthtime_map, "../figures/birthplacemap.html")
+tmap_save(birthtime_map, "../figures/birthplacemap_scaled.png", width = 15, height = 21, units = "cm")
 
   
 
@@ -329,7 +351,7 @@ tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
 tmap_options(check.and.fix = TRUE)
 tmap_mode(mode = "view" )
 
-tm_shape(birthplace_long) +
+tm_shape(birthplace_cntime) +
   tm_facets(by = "century",
                 ncol=2, nrow = 3)+
   tm_dots("certainty")+
@@ -349,7 +371,7 @@ tm_shape(birthplace_long) +
 library(tmap)
 tmap_options(limits = c(facets.view = 6)) # we want to view 5 periods
 tmap_options(check.and.fix = TRUE)
-tmap_mode(mode = "view" )
+tmap_mode(mode = "plot" )
 
 tm_shape(deathplace_long) +
   tm_facets(by = "century",
@@ -392,7 +414,13 @@ knitr::kable(total_travelers, col.names = c("Century","1BCE", "1CE", "2CE", "3CE
 Let's create some summaries of most frequent birth and death places
 
 ```{r b-d-summaries}
-## Deathplace and Birthplace stats
+birthplace_prov <- birthplace %>% 
+  st_join(provinceEDH, join = st_intersects, left = TRUE)
+colnames(birthplace_prov)
+deathplace_prov <- deathplace %>% 
+  st_join(provinceEDH, join = st_intersects, left = TRUE)
+
+## Deathplace and death province stats
 deathplace_anc_smr <- deathplace %>% 
   st_drop_geometry() %>% 
   select(findspot_ancient_clean) %>% 
@@ -400,14 +428,8 @@ deathplace_anc_smr <- deathplace %>%
   tally() %>% 
   arrange(desc(n))
 
-deathplace_mod_smr <- deathplace %>% 
-  st_drop_geometry() %>% 
-  select(findspot_modern_clean) %>% 
-  group_by(findspot_modern_clean) %>% 
-  tally() %>% 
-  arrange(desc(n))
-
 death_smr <- deathplace %>% 
+  select(-province) %>% 
   st_join(provinceEDH, join = st_intersects, left = TRUE) %>% 
   st_drop_geometry() %>% 
   select(province) %>% 
@@ -444,13 +466,6 @@ death_smr
 ## Birth and death provinces' names in origo and province centroid
 Here we attach birth and death province summaries to the origo data and generate summaries of province flow per province centroid.
 ```{r b-d-prov-origo}
-birthplace_prov <- birthplace %>% 
-  st_join(provinceEDH, join = st_intersects, left = TRUE)
-colnames(birthplace_prov)
-deathplace_prov <- deathplace %>% 
-  st_join(provinceEDH, join = st_intersects, left = TRUE)
-
-
 province_flow_centroid <- province_centroid %>% 
   left_join(birth_smr, by = "province") %>% 
   rename(birth_prov = n) %>% 
@@ -518,6 +533,8 @@ provinceEDH <- provinceEDH %>%
 ```
 
 ```{r tmap-d-b-province-poly}
+
+## Mapview source and attractor provinces
 birth <- mapview(provinceEDH, zcol = "birth_sum")
 death <- mapview(provinceEDH, zcol = "death_sum")
 
@@ -525,12 +542,31 @@ death <- mapview(provinceEDH, zcol = "death_sum")
 library(leafsync)
 sync(birth, death)
 
-b_prov <- tm_shape(provinceEDH)+
-  tm_polygons("birth_sum")
+
+## TMAP source and attractor provinces
+tmap_mode(mode = "plot" )
+
+
+b_prov <- tm_shape(provinceEDH) +
+  tm_polygons(col ="birth_sum",colorNA = "white", title = "Migrant births")
+  
 d_prov <- tm_shape(provinceEDH)+
-  tm_polygons("death_sum")
+  tm_polygons("death_sum",colorNA = "white", title = "Migrant deaths")
 
 tmap_arrange(b_prov,d_prov, ncol = 2)
+
+# Print as png
+
+png("../figures/Figure07_400dpi.png",
+     width= 20, height = 8, units = "cm", res = 400)
+tmap_arrange(b_prov,d_prov, ncol = 2)
+dev.off()
+
+pdf("../figures/Figure07.pdf",
+    #colormodel = "gray", 
+    width= 12, height = 5)
+tmap_arrange(b_prov,d_prov, ncol = 2)
+dev.off()
 ```
 
 
@@ -545,14 +581,15 @@ lines <- origo$origo_line %>%
   st_sf() %>% 
   st_set_crs(4326)
   # works just fine
-colnames(origo)
-colnames(lines)
 
 lines <- cbind(lines, origo[,c(1:9,11:19,24)] %>% st_drop_geometry()) %>% 
-  full_join(st_drop_geometry(LISTfindspot), by = c("hd_nr"="EDH.ID")) 
+  full_join(st_drop_geometry(LIREfindspot), by = c("hd_nr"="EDH.ID")) 
+
+# Fix century names
+names(lines)[13:18] <- c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE")
 
 # Quick check
-mapview(lines, zcol = "certainty")
+#mapview(lines, zcol = "certainty")
 
 # Calculate geodetic distance because continent scale
 lines$length_m <- st_length(lines)  # geodetic distance
@@ -560,22 +597,27 @@ lines$length_m <- st_length(lines)  # geodetic distance
 # Get rid of units and create kms
 lines$length_km <- unclass(lines$length_m)/1000  
 
+colnames(origo)
+colnames(lines)
 ```
 ## Histogram of distances by origo certainty
 ```{r}
 # Histogram of distances
-ggplot(lines, aes(x = length_km))+
-  geom_histogram(bins = 100, aes(fill = certainty))+
-  ggtitle(label = "Birth to death distances by birthplace geocoding certainty")+
+lines %>% 
+  filter(!is.na(certainty)) %>% 
+  ggplot(aes(x = length_km,fill = certainty))+
+  geom_histogram(binwidth = 100) +
+  ggtitle(label = "Birth to death distances by geocoding certainty")+
+  scale_fill_grey()+
   theme_bw()+
   theme(#legend.title=element_blank(),
-        legend.position = c(.85,.75))+
-  labs(x = "Distance in kms",
+        legend.position = c(.85,.80))+
+  labs(x = "Distance (km)",
        y = "Persons",
-       fill = "Origo coordinates")+
+       fill = "Origo geocoding")+
   geom_vline(aes(xintercept = mean(length_km)), linetype = "dashed", size = 1)
 
-ggsave("../figures/orig_dist_certain.png", width = 8, height = 6)
+ggsave("../figures/orig_dist_certain_bw.png", width = 6, height = 4)
 ```
 
 
@@ -588,7 +630,6 @@ summary(lines$length_km)
 # only certain birthplaces
 summary(lines[lines$certainty == "certain",]$length_km) # 1746
 
-lines %>% filter(certainty == "certain")
 ```
 ## Distances in a Timeseries: Break distances down by century
 
@@ -598,7 +639,7 @@ lines %>% filter(certainty == "certain")
 
 # Make lines into a long dataset
 colnames(lines)
-names(lines)[13:18] <- c("1BCE", "1CE", "2CE", "3CE", "4CE", "5CE")
+
 lines_long <- lines %>%  
   #select(-origo_line) %>% 
   pivot_longer(cols = `1BCE`:`5CE`,  # take values from columns and write through True/False
@@ -620,19 +661,19 @@ mean_certain <- lines_long %>%
 lines_long %>% 
   filter(certainty == "certain") %>% 
   ggplot(aes(x = length_km))+
-  geom_histogram(bins = 100, aes(fill = certainty) )+
+  geom_histogram(bins = 100)+
   geom_vline(aes(xintercept = average), mean_certain, linetype = "dashed")+
   ggtitle(label = "Life to death distance over centuries") +
   theme_bw() +
   theme(#legend.title=element_blank(),
          #legend.position = c(.88,.94)
           legend.position="none")+
-  labs(x = "Distance in kms",
-       y = "Number of travelers",
+  labs(x = "Distance (km)",
+       y = "Number of migrants",
        fill = "Birthplace coordinates")+
   facet_grid(rows = vars(century)) 
 
-ggsave("../figures/orig_distc_centuries.png", width = 20, units = 
+ggsave("../figures/orig_distc_centuries_bw.png", width = 20, height = 15, units = 
         "cm")
 
 ```
@@ -725,7 +766,7 @@ lines_6province %>%
 
 ```
 
-facetted province origo is NOT WORKING CORRECTLY HERE!! US EMAPVIEW INSTEAD
+TMAP facetted province origo is NOT WORKING CORRECTLY HERE!! US EMAPVIEW INSTEAD
 ```{r}
 # Facetting the map TMAPS does not match mapview(). something is wrong.
 library(tmap)
@@ -868,22 +909,31 @@ EDH_origo_people$newid <- paste(EDH_origo_people$id, EDH_origo_people$person_id,
 
 # Spatial data inspect
 colnames(lines)
-head(lines)
+head(lines, 1)
 
 # Merge spatial and EDH origo data by person_id
 lines_people <- lines %>% 
   left_join(EDH_origo_people, by=c("id" = "newid"))
   #select(matches("pleiades|origo|id|hd|X|type_of|clean_text|point|line|people"))
+
+# Explore people and B-d-distances
+lines_people %>% 
+  st_drop_geometry() %>% 
+  select(hd_nr, pleiades_title, findspot_ancient_clean, length_km) %>% 
+  filter(length_km<50) %>% 
+  arrange(length_km)
 ```
+
+Beware that some 139 persons have died in the same region as they were born - within 10kms anyway, and 217 within 50kms.
 
 ## Visualize distances traveled by status and gender
 ## Distance and occupation
 a fraction of travelers mention their occupation, graphs are not worth publishing
-```{r}
+```{r eval=FALSE}
 # Show how many travelers provide occupation info
 ggplot(lines_people, aes(x = length_km))+
   geom_histogram(bins = 100, aes(fill = occupation))+
-  ggtitle(label = "Great Circle distances from birth region to death region")+
+  ggtitle(label = "Distances from birth region to death region")+
   theme_bw()+
   labs(x = "Distance in kms",
        y = "Number of travelers")
@@ -916,14 +966,6 @@ lines_people %>%
             median = median(length_km),
             max = max(length_km))
 
-
-lines_people %>% 
-  st_drop_geometry() %>% 
-  #group_by(gender) %>% 
-  ggplot(aes(x= gender, y = length_km)) +
-  geom_jitter(alpha = 0.3, color = gender)+
-  geom_boxplot( alpha = 0.7, col="red")
-
 lines_people %>% 
   st_drop_geometry() %>% 
   #group_by(gender) %>% 
@@ -943,17 +985,18 @@ lines_people %>%
 
 # Show breakdown of travelers distances by gender
 lines_people %>% 
-  #filter(!is.na(gender)) %>% 
-  ggplot(aes(x = length_km))+
-  geom_histogram(bins = 100, aes(fill = gender))+
+  filter(!is.na(gender)) %>% 
+  ggplot(aes(x = length_km, fill = gender))+
+  geom_histogram(binwidth = 100) +
+  scale_fill_grey()+
   ggtitle(label = "Birth to death distances by gender")+
   theme_bw()+
   theme(legend.title=element_blank(),
-        legend.position = c(.85,.75))+  # works only after theme_bw()
-  labs(x = "Distance in kms",
+        legend.position = c(.85,.85))+  # works only after theme_bw()
+  labs(x = "Distance (km)",
        y = "Gendered travelers")
 
-ggsave("../figures/orig_dist_gender.png", width = 8, height = 6)
+ggsave("../figures/orig_dist_gender_bw.png", width = 6, height = 4)
 ```
 ### Trip length by gender
 
@@ -1014,7 +1057,7 @@ ggplot(lines_people, aes(x = length_km))+
 
 ```
 
-## Distance by status FIX THIS!!!
+## Distance by status 
 ```{r}
 # Pull the first primary status out of the multi-valued attribute
 status <- str_split_fixed(lines_people$status.y, ";", n=3) %>% 
@@ -1045,17 +1088,18 @@ ggsave("../figures/orig_dist_status.png", width = 8, height = 6)
 ## Faceted plot by status
 ```{r}
 # Plot status by distance
-ggplot(data = lines_status,  aes(x = length_km))+
-  geom_histogram(bins = 50, aes(fill = certainty))+
+ggplot(data = lines_status,  aes(x = length_km))+ # I removed fill = certainty
+  geom_histogram(binwidth = 100)+
   facet_wrap(~ status_clean)+
   theme_bw()+
-  theme(legend.position = "bottom")+
-  labs(title = "Birth to death distances by traveler status (1477 out of 2277)",
-        x = "Distance in kms",
-        y = "Traveler count", 
-        fill = "Origo location")
+  theme(legend.position = "bottom",
+         text = element_text(size = 14))+
+  labs(title = "Birth to death distances by migrant status (1477 out of 2277)",
+       #fill = "Origo location" , # certainty is removed
+       x = "Distance (km)",
+        y = "Persons" )
 
-ggsave("../figures/orig_dist_occupfac.png", width = 8, height = 6)
+ggsave("../figures/orig_dist_occupfac.png", width = 10, height = 8)
 ```
 
 ## What is the status count
@@ -1070,6 +1114,7 @@ lines_status %>%
   #mutate(status_clean = reorder(status_clean, log)) %>% 
   ggplot(aes(y=status_clean, x=log, fill=status_clean)) +
   geom_col(width=0.8, stat="identity") +
+  scale_fill_grey()+
   coord_cartesian(xlim=c(0,4)) +
   labs(x = "Number of instances (log10)", y = "Status category", title = "Status references in the origo data", subtitle = ggtitle(paste("n =", nrow(lines_status), "people in inscriptions"))) +
   geom_label(aes(label= n)) +
